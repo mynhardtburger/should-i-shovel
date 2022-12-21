@@ -1,54 +1,50 @@
-DROP SCHEMA IF EXISTS public CASCADE;
+DROP SCHEMA public CASCADE;
 
-CREATE SCHEMA IF NOT EXISTS public AUTHORIZATION myn;
+CREATE SCHEMA public AUTHORIZATION myn;
 
-COMMENT ON SCHEMA public IS 'standard public schema';
--- public.variables definition
+-- DROP SEQUENCE public.forecasts_forecast_id_seq;
 
--- Drop table
-
-DROP TABLE IF EXISTS public.variables;
-
-CREATE TABLE IF NOT EXISTS public.variables (
-	variable_id int4 NOT NULL GENERATED ALWAYS AS IDENTITY,
-	short_name text NOT NULL UNIQUE, -- variable short name
-	long_name text NOT NULL, -- variable long name
-	unit text NOT NULL, -- unit of measurement
-	CONSTRAINT variables_pk PRIMARY KEY (variable_id)
-);
-
--- Column comments
-
-COMMENT ON COLUMN public.variables.short_name IS 'variable short name';
-COMMENT ON COLUMN public.variables.unit IS 'unit of measurement';
-COMMENT ON COLUMN public.variables.long_name IS 'variable long name';
+CREATE SEQUENCE public.forecasts_forecast_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
 
 -- Permissions
 
-ALTER TABLE public.variables OWNER TO myn;
-GRANT ALL ON TABLE public.variables TO myn;
+ALTER SEQUENCE public.forecasts_forecast_id_seq OWNER TO myn;
+GRANT ALL ON SEQUENCE public.forecasts_forecast_id_seq TO myn;
 
+-- DROP SEQUENCE public.variables_variable_id_seq;
 
+CREATE SEQUENCE public.variables_variable_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.variables_variable_id_seq OWNER TO myn;
+GRANT ALL ON SEQUENCE public.variables_variable_id_seq TO myn;
 -- public.forecasts definition
 
 -- Drop table
 
-DROP TABLE IF EXISTS public.forecasts;
+-- DROP TABLE public.forecasts;
 
-CREATE TABLE IF NOT EXISTS public.forecasts (
+CREATE TABLE public.forecasts (
 	forecast_id int4 NOT NULL GENERATED ALWAYS AS IDENTITY,
-	model text NOT NULL, -- model acronym from which the forecast originates
-	forecast_reference_time timestamptz NOT NULL, -- initial time of forecast
-	forecast_step interval NOT NULL, -- time since forecast_reference_time
-	CONSTRAINT forecasts_pk PRIMARY KEY (forecast_id),
-    UNIQUE(model, forecast_reference_time, forecast_step)
+	model text NOT NULL,
+	forecast_reference_time timestamptz NOT NULL,
+	forecast_step interval NOT NULL,
+	CONSTRAINT forecasts_model_forecast_reference_time_forecast_step_key UNIQUE (model, forecast_reference_time, forecast_step),
+	CONSTRAINT forecasts_pk PRIMARY KEY (forecast_id)
 );
-
--- Column comments
-
-COMMENT ON COLUMN public.forecasts.forecast_reference_time IS 'initial time of forecast';
-COMMENT ON COLUMN public.forecasts.model IS 'model acronym from which the forecast originates';
-COMMENT ON COLUMN public.forecasts.forecast_step IS 'time since forecast_reference_time';
 
 -- Permissions
 
@@ -56,28 +52,62 @@ ALTER TABLE public.forecasts OWNER TO myn;
 GRANT ALL ON TABLE public.forecasts TO myn;
 
 
+-- public.variables definition
+
+-- Drop table
+
+-- DROP TABLE public.variables;
+
+CREATE TABLE public.variables (
+	variable_id int4 NOT NULL GENERATED ALWAYS AS IDENTITY,
+	short_name text NOT NULL,
+	long_name text NOT NULL,
+	unit text NOT NULL,
+	CONSTRAINT variables_pk PRIMARY KEY (variable_id),
+	CONSTRAINT variables_short_name_key UNIQUE (short_name)
+);
+
+-- Permissions
+
+ALTER TABLE public.variables OWNER TO myn;
+GRANT ALL ON TABLE public.variables TO myn;
+
+
+-- public.coordinates definition
+
+-- Drop table
+
+-- DROP TABLE public.coordinates;
+
+CREATE TABLE public.coordinates (
+	coord_id int4 NOT NULL GENERATED ALWAYS AS IDENTITY,
+	latitude float4 NOT NULL,
+	longitude float4 NOT NULL,
+	CONSTRAINT coordinates_pk PRIMARY KEY (coord_id),
+	CONSTRAINT lonlat UNIQUE (latitude, longitude)
+);
+
+-- Permissions
+
+ALTER TABLE public.coordinates OWNER TO myn;
+GRANT ALL ON TABLE public.coordinates TO myn;
+
+
 -- public.predictions definition
 
 -- Drop table
 
-DROP TABLE IF EXISTS public.predictions;
+-- DROP TABLE public.predictions;
 
-CREATE TABLE IF NOT EXISTS public.predictions (
+CREATE TABLE public.predictions (
 	forecast_id int4 NOT NULL,
 	variable_id int4 NOT NULL,
-	longitude float4 NOT NULL, -- x y coordinates of prediction
-	latitude float4 NOT NULL, -- x y coordinates of prediction
-	-- coordinates point NOT NULL, -- x y coordinates of prediction
-	value float4 NULL, -- forecasted variable value
+	value float4 NULL,
+	coord_id int4 NOT NULL,
+	CONSTRAINT coord_fk FOREIGN KEY (coord_id) REFERENCES public.coordinates(coord_id) ON DELETE CASCADE ON UPDATE CASCADE,
 	CONSTRAINT forecasts_fk FOREIGN KEY (variable_id) REFERENCES public.variables(variable_id) ON DELETE CASCADE ON UPDATE CASCADE,
-	CONSTRAINT predictions_fk FOREIGN KEY (forecast_id) REFERENCES public.forecasts(forecast_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    UNIQUE(forecast_id, variable_id, longitude, latitude)
+	CONSTRAINT predictions_fk FOREIGN KEY (forecast_id) REFERENCES public.forecasts(forecast_id) ON DELETE CASCADE ON UPDATE CASCADE
 );
-
--- Column comments
-
--- COMMENT ON COLUMN public.predictions.coordinates IS 'x y coordinates of prediction';
-COMMENT ON COLUMN public.predictions.value IS 'forecasted variable value';
 
 -- Permissions
 

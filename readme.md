@@ -14,13 +14,31 @@ For this project I will stay within the python ecosystem.
 
 ## Tech stack
 ### Frontend
-* HTML & CSS
-* Django
 
-### Database
-* Postgres
-    * Weather history
-    * Usage statistics
+
+### Data model
+RDMS: Postgres
+Extensions: Cube
+
+#### Entity Relationship Diagram:
+![ERD](./images/ERD.png)
+
+#### Disk usage estimates
+During each HRDPS model run it calculates 49 prediction sets: 000 being the current values and 048 future values at 1 hour increments making up 48 hours worth of future predictions. A single prediction set is a 2576x1456 coordinate raster each with each point being prediction value. 49 sets * 2576x1456 raster = 183 782 144 rows for each model run for a single variable.
+
+forecast table:
+Immaterial. 1 row expected.
+
+variables table:
+Immaterial. <10 rows expected.
+
+coordinates table:
+2576*1456 = 3 750 656 rows
+coord_id (int4), latitude (int4) and longitude (int4) each = 3 750 656 rows * 4 bytes = 14 651 KB each
+14 651 KB data * 3 columns + 24 bytes * 3 750 656 rows of overhead per row =
+
+
+
 
 ### APIs
 * Generic weatherAPI
