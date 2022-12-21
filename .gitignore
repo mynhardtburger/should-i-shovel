@@ -1,5 +1,6 @@
 # Data files #
 *.grib2
+data/*
 
 # Local .terraform directories
 **/.terraform/*
