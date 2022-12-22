@@ -92,7 +92,7 @@ resource "aws_instance" "default" {
 
 
 resource "aws_db_instance" "default" {
-  allocated_storage = 5
+  allocated_storage = 50
   db_name           = "mydb"
   engine            = "postgres"
   engine_version    = "13.7"

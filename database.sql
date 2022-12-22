@@ -78,11 +78,11 @@ GRANT ALL ON TABLE public.variables TO myn;
 -- Drop table
 
 -- DROP TABLE public.coordinates;
-
+-- Coordinates are stored as a float8's because else they get rounded
 CREATE TABLE public.coordinates (
 	coord_id int4 NOT NULL GENERATED ALWAYS AS IDENTITY,
-	latitude float4 NOT NULL,
-	longitude float4 NOT NULL,
+	latitude float8 NOT NULL,
+	longitude float8 NOT NULL,
 	CONSTRAINT coordinates_pk PRIMARY KEY (coord_id),
 	CONSTRAINT lonlat UNIQUE (latitude, longitude)
 );
