@@ -2,19 +2,23 @@
 <html lang="en">
 
 <head>
-    <title>Chart.js example</title>
+    <title>Should I Shovel?</title>
 </head>
 
 <body>
     <div style="width: 500px;">
-        <form id="lat_lon_form">
-            <label for="fname">Latitude:</label><br>
-            <input type="text" id="f_lat" name="f_lat"><br>
-            <label for="lname">Longitude:</label><br>
-            <input type="text" id="f_lon" name="f_lon"><br>
-            <input type="submit" value="Get Forecast">
-        </form>
+        <label for="fname">Latitude:</label><br>
+        <input type="text" id="f_lat" name="f_lat" value="50.795127"><br>
+        <label for="lname">Longitude:</label><br>
+        <input type="text" id="f_lng" name="f_lng" value="-124.0456478"><br>
+        <button id='getData'>Get Data</button>
     </div><br />
+    <div style="width: 500px;">
+        <label for="fname">address:</label><br>
+        <input type="text" id="address" name="address" value="33 eigth street etobicoke"><br>
+        <button id='getData_address'>Get forecast</button>
+    </div><br />
+    <div style="width: 800px;"><canvas id="charts"></canvas></div>
 
     <!-- <div style="width: 500px;"><canvas id="dimensions"></canvas></div><br />
     <div style="width: 800px;"><canvas id="acquisitions"></canvas></div>
@@ -22,6 +26,9 @@
     <script type="module" src="dimensions.js"></script>
     <script type="module" src="acquisitions.js"></script> -->
     <script type="module" src="shouldishovel.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@^4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@^2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@^1"></script> -->
 </body>
 
 </html>
