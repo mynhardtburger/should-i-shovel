@@ -3,9 +3,9 @@ output "aws_region" {
   value       = var.aws_region
 }
 
-output "ec2_public_dns" {
-  description = "EC2 public dns."
-  value       = aws_instance.default.public_dns
+output "eip" {
+  description = "EC2 public ip"
+  value       = aws_eip.ip.public_ip
 }
 
 output "private_key" {

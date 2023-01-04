@@ -1,18 +1,3 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.4"
-    }
-  }
-}
-
-provider "aws" {
-  region  = var.aws_region
-  profile = "default"
-
-}
-
 resource "random_password" "password" {
   length           = 16
   special          = true
@@ -23,6 +8,11 @@ data "aws_vpc" "default" {
   default = true
 }
 
+# dns
+resource "aws_eip" "ip" {
+  instance = aws_instance.default.id
+}
+
 # security groups
 resource "aws_security_group" "security-group-us-east-2-d-postgres" {
   vpc_id      = data.aws_vpc.default.id
@@ -31,6 +21,19 @@ resource "aws_security_group" "security-group-us-east-2-d-postgres" {
   ingress {
     from_port   = 5432
     to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -84,10 +87,6 @@ resource "aws_instance" "default" {
   vpc_security_group_ids = [
     aws_security_group.security-group-us-east-2-d-ssh.id
   ]
-  tags = {
-    Project = "shouldishovel"
-    Name    = "app.dev.us-east-2.aws.shouldishovel.com"
-  }
 }
 
 
@@ -104,8 +103,76 @@ resource "aws_db_instance" "default" {
   ]
   skip_final_snapshot = true
   publicly_accessible = true
-  tags = {
-    Project = "shouldishovel"
-    Name    = "sql01.dev.us-east-2.aws.shouldishovel.com"
+}
+
+resource "aws_s3_bucket" "s3_gribs" {
+  bucket = "sto01.dev.us-east-2.aws.shouldishovel.com"
+}
+
+resource "aws_s3_bucket_acl" "s3_gribs" {
+  bucket = aws_s3_bucket.s3_gribs.id
+  acl    = "private"
+}
+
+resource "aws_s3_bucket_versioning" "s3_gribs" {
+  bucket = aws_s3_bucket.s3_gribs.id
+  versioning_configuration {
+    status = "Disabled"
   }
+}
+
+
+
+resource "aws_iam_role" "rds_role" {
+  name = "rds_role"
+
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = ""
+        Principal = {
+          Service = "rds.amazonaws.com"
+        }
+      },
+    ]
+  })
+}
+resource "aws_iam_policy" "s3-access" {
+  name        = "rds-s3-import-policy"
+  path        = "/"
+  description = "RDS to S3 import policy"
+
+  policy = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Sid" : "s3import",
+        "Action" : [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ],
+        "Effect" : "Allow",
+        "Resource" : [
+          "arn:aws:s3:::sto01.dev.us-east-2.aws.shouldishovel.com",
+          "arn:aws:s3:::sto01.dev.us-east-2.aws.shouldishovel.com/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "rds-to-s3" {
+  role       = aws_iam_role.rds_role.name
+  policy_arn = aws_iam_policy.s3-access.arn
+}
+
+resource "aws_db_instance_role_association" "rds_s3import_role" {
+  db_instance_identifier = aws_db_instance.default.id
+  feature_name           = "s3Import"
+  role_arn               = aws_iam_role.rds_role.arn
 }
