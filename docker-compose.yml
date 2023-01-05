@@ -257,15 +257,27 @@ services:
     restart: always
     volumes:
       - ./client/src:/usr/share/nginx/html:ro
+      - ./containers/webserver/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      api-backend:
+        condition: service_healthy
 
   api-backend:
     container_name: api
-    build: ./containers/api
-    # context: ./
+    build:
+      context: .
+      dockerfile: containers/api/dockerfile
+    env_file: containers/api/env
     ports:
-      - 8081:8081
+      - 8000:80
+    healthcheck:
+      test: [ "CMD", "curl", "--fail", "http://localhost:80/" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
     restart: always
-    command: uvicorn app.main:app --host 0.0.0.0
+    volumes:
+      - ./api:/code
 
 volumes:
   postgres-db-volume:
