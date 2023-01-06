@@ -4,3 +4,7 @@ pandas==1.5.2
 psycopg==3.1.6
 psycopg-binary==3.1.6
 uvicorn==0.20.0
+boto3==1.26.37
+boto3-stubs==1.26.37
+botocore==1.29.37
+botocore-stubs==1.29.37

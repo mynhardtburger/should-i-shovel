@@ -1,9 +1,10 @@
 import os
 from datetime import datetime, timedelta, timezone
 from tempfile import NamedTemporaryFile
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import requests
+from airflow.operators.bash import BashOperator
 from airflow.providers.amazon.aws.transfers.local_to_s3 import (
     LocalFilesystemToS3Operator,
 )
@@ -15,7 +16,7 @@ def query_latest(
     forecast_hour: int,
     url_path: str = "WXO-DD/model_hrdps/continental/grib2",
     domain: str = "https://hpfx.collab.science.gc.ca",
-) -> Tuple[str, str, str]:
+) -> Dict[str, str]:
     """Find the latest model run.
     Starting at the current date working backwards 5 days, for each day and for each forecasts [18, 12, 06, 00] a HEAD request is sent to the forecast_hour.
     First 200 OK response is returned."""
@@ -32,11 +33,11 @@ def query_latest(
             res = requests.head(request_url)
             if res.status_code == 200:
                 print("Success:", baseurl, date, forecast)
-                return baseurl, date, forecast
+                return {"baseurl": baseurl, "date": date, "forecast": forecast}
             else:
                 print("Status code:", res.status_code, request_url)
 
-    return "", "", ""
+    return {"baseurl": "", "date": "", "forecast": ""}
 
 
 def create_urls(
@@ -66,9 +67,8 @@ def create_urls(
     return urls
 
 
-def download_predictions(download_urls: List[str], savepath: str = "./") -> List[str]:
-    """Download list of urls to savepath."""
-    filepaths = []
+def download_predictions(download_urls: List[str], aws_bucket: str) -> None:
+    """Download list of urls to aws bucket"""
 
     retry_strategy = Retry(
         total=3,
@@ -80,18 +80,19 @@ def download_predictions(download_urls: List[str], savepath: str = "./") -> List
     http = requests.Session()
     http.mount("https://", adapter)
     http.mount("http://", adapter)
-
+    print("number of URLs:", len(download_urls))
     for url in download_urls:
         filename = url.split("/")[-1]
         print(f"Downloading {url}", end=" | ")
         res = http.get(url)
         with NamedTemporaryFile() as f:
+            print(filename, url)
             f.write(res.content)
             create_local_to_s3_job = LocalFilesystemToS3Operator(
                 task_id="create_local_to_s3_job",
                 filename=f.name,
-                dest_key=S3_KEY,
-                dest_bucket=S3_BUCKET,
+                dest_key=filename,
+                dest_bucket=aws_bucket,
                 replace=True,
             )
         # filepath = os.path.join(savepath, filename)

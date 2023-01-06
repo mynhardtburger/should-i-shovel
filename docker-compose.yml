@@ -18,6 +18,19 @@ x-airflow-common:
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    # AWS variables
+    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    # AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+    AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+    # Connections
+    AIRFLOW_CONN_API_BACKEND:
+      {
+        "conn_type": "api_backend",
+        "host": "localhost",
+        "port": 80,
+        "schema": "/data_mangement/refresh_weather_data"
+      }
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
@@ -278,6 +291,11 @@ services:
     restart: always
     volumes:
       - ./api:/code
+    tty: true
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
 
 volumes:
   postgres-db-volume:

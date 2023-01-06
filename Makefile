@@ -24,7 +24,9 @@ nginx-restart:
 	docker-compose exec frontend nginx -s reload
 
 ## api
-api-start:
-	source ~/venv/shouldishovel/bin/activate;\
-	cd api;\
-	uvicorn main:app --reload &
+api-restart:
+	docker-compose restart api
+
+api-rebuild:
+	docker-compose build --no-cache api-backend
+	docker-compose up -d api-backend
