@@ -8,7 +8,7 @@ data "aws_vpc" "default" {
   default = true
 }
 
-# dns
+# static IP
 resource "aws_eip" "ip" {
   instance = aws_instance.default.id
 }
@@ -87,17 +87,29 @@ resource "aws_instance" "default" {
   vpc_security_group_ids = [
     aws_security_group.security-group-us-east-2-d-ssh.id
   ]
+  user_data = templatefile("aws_instance.default.tftpl", {
+    AWS_RDS_PASSWORD      = var.AWS_RDS_PASSWORD,
+    AWS_RDS_HOST          = aws_db_instance.default.endpoint,
+    AWS_RDS_DB            = aws_db_instance.default.db_name,
+    AWS_RDS_USER          = aws_db_instance.default.username,
+    AWS_RDS_PORT          = aws_db_instance.default.port,
+    GOOGLE_API_KEY        = var.GOOGLE_API_KEY,
+    AWS_ACCESS_KEY_ID     = var.AWS_ACCESS_KEY_ID,
+    AWS_SECRET_ACCESS_KEY = var.AWS_SECRET_ACCESS_KEY
+    AWS_DEFAULT_REGION    = var.AWS_DEFAULT_REGION
+    AWS_BUCKET            = aws_s3_bucket.s3_gribs.name
+  })
 }
 
 
 resource "aws_db_instance" "default" {
-  allocated_storage = 50
+  allocated_storage = 25
   db_name           = "mydb"
   engine            = "postgres"
   engine_version    = "13.7"
   instance_class    = "db.t3.micro"
   username          = "myn"
-  password          = random_password.password.result
+  password          = var.AWS_RDS_PASSWORD
   vpc_security_group_ids = [
     aws_security_group.security-group-us-east-2-d-postgres.id
   ]
@@ -120,8 +132,6 @@ resource "aws_s3_bucket_versioning" "s3_gribs" {
     status = "Disabled"
   }
 }
-
-
 
 resource "aws_iam_role" "rds_role" {
   name = "rds_role"

@@ -19,7 +19,7 @@
         * [grib_ls](https://confluence.ecmwf.int/display/ECC/grib_ls) lists the content of GRIB files printing values of some keys.
         * [grib_get_data](https://confluence.ecmwf.int/display/ECC/grib_get_data) prints a latitude, longitude, data values list. Note: Rotated grids are first unrotated.
     * [raster2pgsql](https://postgis.net/docs/using_raster_dataman.html) is a raster loader executable that loads GDAL supported raster formats into sql suitable for loading into a PostGIS raster table. Installable via the *postgis* package on ubuntu/debian systems.
-    * [gdalbuildvrt](https://gdal.org/programs/gdalbuildvrt.html) builds a virtual dataset (VRT) from separate input gdal datasets. This can be used to combine multiple GRIB files into a tiled mosaic or a single raster stacked with each file representing a different band (-separate option).
+    * [m](https://gdal.org/programs/gdalbuildvrt.html) builds a virtual dataset (VRT) from separate input gdal datasets. This can be used to combine multiple GRIB files into a tiled mosaic or a single raster stacked with each file representing a different band (-separate option).
 
 * Data retrieval method
     * Advanced Message Queuing Protocol - specifically [Sarracenia](https://metpx.github.io/sarracenia/)
@@ -59,6 +59,7 @@
             ```shell
             gdalbuildvrt -separate test.vrt CMC_hrdps_continental_SNOD_SFC_0_ps2.5km_2022122000_P0*.grib2
             ```
+            Note that gdal tools can access S3 buckets directly via the /vsis3/ path prefix.
         3. Using [raster2pgsql](https://postgis.net/docs/using_raster_dataman.html) to load directly from GRIB2 to PostGIS raster table.
             ```shell
             raster2pgsql -d -I -q -t "auto" -s 990000 CMC_hrdps_continental_SNOD_SFC_0_ps2.5km_2022122000_P021-00.grib2 public.raster > test.sql
@@ -74,3 +75,32 @@
             * Very large data storage. Close to 1GB for coordinates and 9GB for predication data.
             * Significant overhead/wastage due to 4byte data in 8byte page + 24bytes of row overhead + large indexes due to row count. There ends up being much more overhead than actual data.
             * Slow updates/refresh of data due to volume
+
+* SQL query
+    * ST_MakePoint(X, Y) creates the geometry point of unknown SRID.
+    * ST_SetSRID(geometry, srid) sets the SRID of the geometry. No translation takes place.
+    * ST_Transform(geometry, srid) transform the geometry into the provided srid. This srid might be a custom srid which was loaded to the spatial_ref_sys table.
+    * ST_Value(raster, band, geometry) retrieves the value at a specific point
+    *
+    * Use proj4text to find the PROJ string which describes the coordinate system (CRS)
+    *   ```
+        with coords as (
+        select
+            -79.50458733706594 as lat,
+            43.59684033614312 as lon
+        ),
+        pt AS (
+        SELECT ST_Transform(ST_SetSRID(ST_MakePoint(lat, lon), 4326), 990000) AS pt
+        from coords
+        )
+        SELECT
+            b as band,
+            ST_Value(raster, b, pt.pt) as value,
+            lat,
+            lon
+        FROM "TMP_TGL_RAW"
+            cross join coords
+            CROSS JOIN pt
+            CROSS JOIN generate_series(1, 48) b
+        WHERE ST_Intersects(pt.pt, st_convexhull(raster));
+        ```

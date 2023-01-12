@@ -201,3 +201,6 @@ ALTER TABLE public.test ADD CONSTRAINT test_variable_fk FOREIGN KEY (variable_id
 
 GRANT ALL ON SCHEMA public TO myn;
 GRANT ALL ON SCHEMA public TO public;
+
+ALTER DATABASE mydb SET postgis.enable_outdb_rasters = true;
+ALTER DATABASE mydb SET postgis.gdal_enabled_drivers TO 'ENABLE_ALL';

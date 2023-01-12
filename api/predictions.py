@@ -1,10 +1,12 @@
-from typing import Union, Optional, TypeAlias, Sequence, Mapping, Any
+from typing import Any, Mapping, Optional, Sequence, TypeAlias, Union
+
+import pandas as pd
 import psycopg
 from psycopg import sql
-import pandas as pd
 
 Query: TypeAlias = Union[bytes, "sql.SQL", "sql.Composed"]
 Params: TypeAlias = Union[Sequence[Any], Mapping[str, Any]]
+
 
 def execute_sql_as_dataframe(
     conn_details: dict[str, str],
@@ -22,7 +24,10 @@ def execute_sql_as_dataframe(
                 return pd.DataFrame(res, columns=columns)
             return pd.DataFrame()
 
-def get_nearest_predictions_as_df(conn_details: dict[str, str], lat: float, lon: float) -> pd.DataFrame:
+
+def get_nearest_predictions_as_df(
+    conn_details: dict[str, str], lat: float, lon: float
+) -> pd.DataFrame:
     """Obtains the nearest prediction to the coordinates provided returing the data in a dataframe."""
     query = sql.SQL(
         """

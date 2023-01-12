@@ -1,10 +1,3 @@
-## AWS account level config: region
-variable "aws_region" {
-  description = "AWS region"
-  type        = string
-  default     = "us-east-2"
-}
-
 ## Key to allow connection to our EC2 instance
 variable "key_name" {
   description = "EC2 key name"
@@ -24,4 +17,36 @@ variable "alert_email_id" {
   description = "Email id to send alerts to "
   type        = string
   default     = "mynhardt+shouldishovel@gmail.com"
+}
+
+# Terraform cloud defined variable
+variable "AWS_RDS_PASSWORD" {
+  description = "AWS_RDS_PASSWORD"
+  type        = string
+}
+
+# Terraform cloud defined variable
+variable "GOOGLE_API_KEY" {
+  description = "GOOGLE_API_KEY"
+  type        = string
+}
+
+variable "AWS_SECRET_ACCESS_KEY" {
+  description = "AWS_SECRET_ACCESS_KEY"
+  type        = string
+}
+
+variable "AWS_ACCESS_KEY_ID" {
+  description = "AWS_ACCESS_KEY_ID"
+  type        = string
+}
+
+variable "AWS_DEFAULT_REGION" {
+  description = "AWS_DEFAULT_REGION"
+  type        = string
+}
+
+variable "website_domain" {
+  type    = string
+  default = "shouldishovel.com"
 }

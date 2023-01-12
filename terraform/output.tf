@@ -1,6 +1,6 @@
 output "aws_region" {
   description = "Region set for AWS"
-  value       = var.aws_region
+  value       = var.AWS_DEFAULT_REGION
 }
 
 output "eip" {
@@ -37,8 +37,6 @@ output "db_user" {
   sensitive   = false
 }
 
-output "db_password" {
-  value       = aws_db_instance.default.password
-  description = "The database password."
-  sensitive   = true
+output "simple_website" {
+  value = aws_s3_bucket_website_configuration.static_website.website_endpoint
 }

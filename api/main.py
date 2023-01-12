@@ -1,23 +1,30 @@
 import logging
+import os
+from datetime import datetime
+from typing import Any
 from urllib.parse import unquote
 
 import geocoder
 import predictions
-from data_management import create_urls, download_predictions, find_latest_forecast, get_s3_filelisting, download_predictions_bulk
+from data_management import (
+    create_urls,
+    download_predictions_bulk,
+    find_latest_forecast,
+    full_refresh,
+    get_s3_filelisting,
+)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime
-from typing import Any
 
 # Define connection details
 pg_connection_dict = {
-    "dbname": "mydb",
-    "user": "myn",
-    "password": r"2)2K9zJCKZv7pLUd",
-    "port": "5432",
-    "host": "terraform-20221222010822007100000002.c2x7llrlmsr3.us-east-2.rds.amazonaws.com",
+    "dbname": os.environ["AWS_RDS_DB"],
+    "user": os.environ["AWS_RDS_USER"],
+    "password": os.environ["AWS_RDS_PASSWORD"],
+    "port": os.environ["AWS_RDS_PORT"],
+    "host": os.environ["AWS_RDS_HOST"],
 }
-
+aws_bucket = os.environ["AWS_BUCKET"]
 
 app = FastAPI()
 
@@ -74,31 +81,48 @@ def return_latest_forecast(
 @app.get("/data_mangement/refresh_weather_data")
 def refresh_weather_data():
     """Redownloads the latest available weather forecasts."""
-    latest_url = find_latest_forecast(48)
-    download_urls:list[str] = []
-
     variables = [
-        {"variable": "SNOD", "level_type": "SFC", "level": "0"}, # Snow Depth in meters
-        {"variable": "APCP", "level_type": "SFC", "level": "0"}, # Accumulated Precipitation in kg m-2
-        {"variable": "WEASN", "level_type": "SFC", "level": "0"}, # Accumulated Precipitation type - Snow in kg m-2
-        {"variable": "TMP", "level_type": "TGL", "level": "2"}, # Temperature 2m above ground in kelvin
-        {"variable": "TCDC", "level_type": "SFC", "level": "0"}, # Total Cloud in percent
-        {"variable": "ALBDO", "level_type": "SFC", "level": "0"}, # Albedo in percent
-        {"variable": "RH", "level_type": "TGL", "level": "2"}, # Relative humidity 2m above ground in percent
+        {"variable": "SNOD", "level_type": "SFC", "level": "0"},  # Snow Depth in meters
+        {
+            "variable": "APCP",
+            "level_type": "SFC",
+            "level": "0",
+        },  # Accumulated Precipitation in kg m-2
+        {
+            "variable": "WEASN",
+            "level_type": "SFC",
+            "level": "0",
+        },  # Accumulated Precipitation type - Snow in kg m-2
+        {
+            "variable": "TMP",
+            "level_type": "TGL",
+            "level": "2",
+        },  # Temperature 2m above ground in kelvin
+        {
+            "variable": "TCDC",
+            "level_type": "SFC",
+            "level": "0",
+        },  # Total Cloud in percent
+        {"variable": "ALBDO", "level_type": "SFC", "level": "0"},  # Albedo in percent
+        {
+            "variable": "RH",
+            "level_type": "TGL",
+            "level": "2",
+        },  # Relative humidity 2m above ground in percent
     ]
 
-    for var  in variables:
-        urls = create_urls(latest_url["baseurl"], model_run=latest_url["forecast"], **var)
-        download_urls.extend(urls)
-
-    results = download_predictions_bulk(
-        download_urls=download_urls,
+    results = full_refresh(
+        variables,
         aws_bucket="sto01.dev.us-east-2.aws.shouldishovel.com",
-        path="gribs"
+        last_forecast_hour=48,
     )
     return results
 
+
 @app.get("/data_management/list_s3_contents")
-def list_s3_contents(prefix:str = "") -> list[dict[str,Any]]:
+def list_s3_contents(prefix: str = "") -> list[dict[str, Any]]:
     """Returns list of the S3 bucket contents filtered for files starting with the prefix."""
-    return get_s3_filelisting(aws_bucket="sto01.dev.us-east-2.aws.shouldishovel.com", prefix=prefix,)
+    return get_s3_filelisting(
+        aws_bucket="sto01.dev.us-east-2.aws.shouldishovel.com",
+        prefix=prefix,
+    )

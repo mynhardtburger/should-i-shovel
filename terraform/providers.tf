@@ -17,17 +17,17 @@ terraform {
     #   version = ">=0.36.0"
     # }
 
-    # docker = {
-    #   source  = "kreuzwerker/docker"
-    #   version = "2.24.0"
-    # }
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "2.25.0"
+    }
   }
 }
 
-
-# AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are setup within terraform cloud as environmental variables.
 provider "aws" {
-  region = var.aws_region
+  region     = var.AWS_DEFAULT_REGION
+  access_key = var.AWS_ACCESS_KEY_ID
+  secret_key = var.AWS_SECRET_ACCESS_KEY
   default_tags {
     tags = {
       Project = "shouldishovel"
@@ -39,4 +39,4 @@ provider "aws" {
 #   region = var.aws_region
 # }
 
-# provider "docker" {}
+provider "docker" {}
