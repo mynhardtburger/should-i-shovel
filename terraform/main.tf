@@ -97,13 +97,14 @@ resource "aws_instance" "default" {
     AWS_ACCESS_KEY_ID     = var.AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY = var.AWS_SECRET_ACCESS_KEY
     AWS_DEFAULT_REGION    = var.AWS_DEFAULT_REGION
-    AWS_BUCKET            = aws_s3_bucket.s3_gribs.name
+    AWS_BUCKET            = aws_s3_bucket.s3_gribs.bucket
+    REPO_URL              = var.repo_url
   })
 }
 
 
 resource "aws_db_instance" "default" {
-  allocated_storage = 25
+  allocated_storage = 50
   db_name           = "mydb"
   engine            = "postgres"
   engine_version    = "13.7"

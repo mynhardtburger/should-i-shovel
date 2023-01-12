@@ -1,31 +1,35 @@
 #!/bin/bash
 
 echo "-------------------------START SETUP---------------------------"
-sudo apt-get -y update
 
+echo "---Installing docker---"
+# https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
+sudo apt-get -y update
 sudo apt-get -y install \
-ca-certificates \
-curl \
-gnupg \
-lsb-release
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
 
 sudo apt -y install unzip
 
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
 echo \
-"deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
-$(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 sudo apt-get -y update
 sudo apt-get -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-sudo chmod 666 /var/run/docker.sock
+sudo docker run hello-world
+# sudo chmod 666 /var/run/docker.sock
 
-sudo apt install make
-sudo apt install -y gdal-bin
-sudo apt install -y postgis
+sudo apt-get install -y make \
+    gdal-bin \
+    postgis
 
-echo "Creating environmental variables"
+echo "---Creating environmental variables---"
 echo "export AWS_RDS_PASSWORD=${AWS_RDS_PASSWORD}" | sudo tee -a /etc/profile.d/shouldishovel.sh
 echo "export AWS_RDS_HOST=${AWS_RDS_HOST}" | sudo tee -a /etc/profile.d/shouldishovel.sh
 echo "export AWS_RDS_DB=${AWS_RDS_DB}" | sudo tee -a /etc/profile.d/shouldishovel.sh
@@ -39,8 +43,16 @@ echo "export AWS_BUCKET=${AWS_BUCKET}" | sudo tee -a /etc/profile.d/shouldishove
 sudo chmod +x /etc/profile.d/shouldishovel.sh
 . /etc/profile.d/shouldishovel.sh
 
-echo "Creating up .pgpass file"
+echo "---Creating up .pgpass file---"
 echo ${AWS_RDS_HOST}:${AWS_RDS_PORT}:${AWS_RDS_DB}:${AWS_RDS_USER}:${AWS_RDS_PASSWORD} | sudo tee -a ~/.pgpass
 sudo chmod 600 ~/.pgpass
+
+echo "---Clone git repo to EC2---"
+cd /home/ubuntu && git clone ${REPO_URL}
+
+cd should-i-shovel
+
+echo '---Start containers---'
+make up
 
 echo "-------------------------END SETUP---------------------------"

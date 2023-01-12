@@ -5,31 +5,31 @@ ssh-app:
 
 ## Docker
 airflow-init:
-	docker-compose up airflow-init
+	docker compose up airflow-init
 
 up:
-	docker-compose up
+	docker compose up
 
 down:
-	docker-compose down --volumes --remove-orphans
+	docker compose down --volumes --remove-orphans
 
 restart:
-	docker-compose restart
+	docker compose restart
 
 docker-delete-all:
-	docker-compose down --volumes --rmi all
+	docker compose down --volumes --rmi all
 
 ## nginx
 nginx-restart:
-	docker-compose exec frontend nginx -s reload
+	docker compose exec frontend nginx -s reload
 
 ## api
 api-restart:
-	docker-compose restart api
+	docker compose restart api
 
 api-rebuild:
-	docker-compose build --no-cache api-backend
-	docker-compose up -d api-backend
+	docker compose build --no-cache api-backend
+	docker compose up -d api-backend
 
 ## website
 update-website:

@@ -50,3 +50,9 @@ variable "website_domain" {
   type    = string
   default = "shouldishovel.com"
 }
+
+variable "repo_url" {
+  description = "Repository url to clone into production machine"
+  type        = string
+  default     = "https://github.com/mynhardtburger/should-i-shovel.git"
+}
