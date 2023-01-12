@@ -320,6 +320,7 @@ def full_refresh(
     variables: list[dict[str, str]],
     aws_bucket: str,
     last_forecast_hour: int,
+    conn_details: dict[str, str],
 ):
     # get latest forecast hour
     latest_url = find_latest_forecast(last_forecast_hour)
@@ -363,20 +364,20 @@ def full_refresh(
         print(vrt)
         assert isinstance(vrt, str)
 
-        psql = load_to_postgis(vrt, "public", "var_str", pg_connection_dict)
+        psql = load_to_postgis(vrt, "public", "var_str", conn_details)
         assert isinstance(psql, str)
         print(psql)
         results.append(psql)
     return results
 
 
-pg_connection_dict = {
-    "dbname": os.environ["AWS_RDS_DB"],
-    "user": os.environ["AWS_RDS_USER"],
-    "password": os.environ["AWS_RDS_PASSWORD"],
-    "port": os.environ["AWS_RDS_PORT"],
-    "host": os.environ["AWS_RDS_HOST"],
-}
+# pg_connection_dict = {
+#     "dbname": os.environ["AWS_RDS_DB"],
+#     "user": os.environ["AWS_RDS_USER"],
+#     "password": os.environ["AWS_RDS_PASSWORD"],
+#     "port": os.environ["AWS_RDS_PORT"],
+#     "host": os.environ["AWS_RDS_HOST"],
+# }
 
 # bucket = "sto01.dev.us-east-2.aws.shouldishovel.com"
 # vrt = create_vrt(

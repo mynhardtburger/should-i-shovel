@@ -6,13 +6,7 @@ from urllib.parse import unquote
 
 import geocoder
 import predictions
-from data_management import (
-    create_urls,
-    download_predictions_bulk,
-    find_latest_forecast,
-    full_refresh,
-    get_s3_filelisting,
-)
+from data_management import find_latest_forecast, full_refresh, get_s3_filelisting
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -114,6 +108,7 @@ def refresh_weather_data():
     results = full_refresh(
         variables,
         aws_bucket="sto01.dev.us-east-2.aws.shouldishovel.com",
+        conn_details=pg_connection_dict,
         last_forecast_hour=48,
     )
     return results
