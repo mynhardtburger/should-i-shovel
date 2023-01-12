@@ -280,7 +280,6 @@ services:
     build:
       context: .
       dockerfile: containers/api/dockerfile
-    env_file: containers/api/env
     ports:
       - 8000:80
     healthcheck:
