@@ -8,7 +8,7 @@ airflow-init:
 	docker compose up airflow-init
 
 up:
-	docker compose up
+	docker compose up -d
 
 down:
 	docker compose down --volumes --remove-orphans
