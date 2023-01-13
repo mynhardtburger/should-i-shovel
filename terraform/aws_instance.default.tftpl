@@ -4,51 +4,51 @@ echo "-------------------------START SETUP---------------------------"
 
 echo "---Installing docker---"
 # https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
-sudo apt-get -y update
-sudo apt-get -y install \
+apt-get -y update
+apt-get -y install \
     ca-certificates \
     curl \
     gnupg \
     lsb-release
 
-sudo apt -y install unzip
+apt -y install unzip
 
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
 echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-sudo apt-get -y update
-sudo apt-get -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-sudo docker run hello-world
-# sudo chmod 666 /var/run/docker.sock
+apt-get -y update
+apt-get -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+docker run hello-world
+# chmod 666 /var/run/docker.sock
 
-sudo apt-get install -y make \
+apt-get install -y make \
     gdal-bin \
     postgis
 
 echo "---Creating environmental variables---"
-echo "export AWS_RDS_PASSWORD=${AWS_RDS_PASSWORD}" | sudo tee -a /etc/profile.d/shouldishovel.sh
-echo "export AWS_RDS_HOST=${AWS_RDS_HOST}" | sudo tee -a /etc/profile.d/shouldishovel.sh
-echo "export AWS_RDS_DB=${AWS_RDS_DB}" | sudo tee -a /etc/profile.d/shouldishovel.sh
-echo "export AWS_RDS_USER=${AWS_RDS_USER}" | sudo tee -a /etc/profile.d/shouldishovel.sh
-echo "export AWS_RDS_PORT=${AWS_RDS_PORT}" | sudo tee -a /etc/profile.d/shouldishovel.sh
-echo "export GOOGLE_API_KEY=${GOOGLE_API_KEY}" | sudo tee -a /etc/profile.d/shouldishovel.sh
-echo "export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}" | sudo tee -a /etc/profile.d/shouldishovel.sh
-echo "export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" | sudo tee -a /etc/profile.d/shouldishovel.sh
-echo "export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" | sudo tee -a /etc/profile.d/shouldishovel.sh
-echo "export AWS_BUCKET=${AWS_BUCKET}" | sudo tee -a /etc/profile.d/shouldishovel.sh
-sudo chmod +x /etc/profile.d/shouldishovel.sh
+echo "export AWS_RDS_PASSWORD=${AWS_RDS_PASSWORD}" | tee -a /etc/profile.d/shouldishovel.sh
+echo "export AWS_RDS_HOST=${AWS_RDS_HOST}" | tee -a /etc/profile.d/shouldishovel.sh
+echo "export AWS_RDS_DB=${AWS_RDS_DB}" | tee -a /etc/profile.d/shouldishovel.sh
+echo "export AWS_RDS_USER=${AWS_RDS_USER}" | tee -a /etc/profile.d/shouldishovel.sh
+echo "export AWS_RDS_PORT=${AWS_RDS_PORT}" | tee -a /etc/profile.d/shouldishovel.sh
+echo "export GOOGLE_API_KEY=${GOOGLE_API_KEY}" | tee -a /etc/profile.d/shouldishovel.sh
+echo "export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}" | tee -a /etc/profile.d/shouldishovel.sh
+echo "export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" | tee -a /etc/profile.d/shouldishovel.sh
+echo "export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" | tee -a /etc/profile.d/shouldishovel.sh
+echo "export AWS_BUCKET=${AWS_BUCKET}" | tee -a /etc/profile.d/shouldishovel.sh
+chmod +x /etc/profile.d/shouldishovel.sh
 . /etc/profile.d/shouldishovel.sh
 
 echo "---Creating up .pgpass file---"
-echo ${AWS_RDS_HOST}:${AWS_RDS_PORT}:${AWS_RDS_DB}:${AWS_RDS_USER}:${AWS_RDS_PASSWORD} | sudo tee -a ~/.pgpass
-sudo chmod 600 ~/.pgpass
+echo ${AWS_RDS_HOST}:${AWS_RDS_PORT}:${AWS_RDS_DB}:${AWS_RDS_USER}:${AWS_RDS_PASSWORD} | tee -a ~/.pgpass
+chmod 600 ~/.pgpass
 
 echo "---Clone git repo to EC2---"
-cd /home/ubuntu && git clone ${REPO_URL}
+git clone ${REPO_URL}
 
 cd should-i-shovel
 

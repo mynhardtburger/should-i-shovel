@@ -25,7 +25,7 @@ nginx-restart:
 
 ## api
 api-restart:
-	docker compose restart api
+	docker compose restart api-backend
 
 api-rebuild:
 	docker compose build --no-cache api-backend
