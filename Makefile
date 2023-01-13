@@ -10,6 +10,9 @@ airflow-init:
 up:
 	docker compose up -d
 
+up-dev:
+	docker compose -f docker-compose-localdev.yml up -d
+
 down:
 	docker compose down --volumes --remove-orphans
 

@@ -21,42 +21,40 @@ def execute_sql_as_dataframe(
 
             if curr.description:
                 columns = [col.name for col in curr.description]
-                return pd.DataFrame(res, columns=columns)
+                df = pd.DataFrame(res, columns=columns)
+                return df
             return pd.DataFrame()
 
 
 def get_nearest_predictions_as_df(
-    conn_details: dict[str, str], lat: float, lon: float
+    conn_details: dict[str, str], table: str, lat: float, lon: float
 ) -> pd.DataFrame:
     """Obtains the nearest prediction to the coordinates provided returing the data in a dataframe."""
     query = sql.SQL(
         """
-        with coord as (
-            select
-                c.coord_id ,
-                c.latitude ,
-                c.longitude
-            from public.coordinates c
-            order by c.coord_point <-> '({latitude}, {longitude})'
-            limit 1
-        )
+        with coords as (
         select
-            f.forecast_reference_time ,
-            f.forecast_reference_time + f.forecast_step as forecast_time ,
-            c.latitude ,
-            c.longitude ,
-            v.short_name ,
-            v.long_name ,
-            value ,
-            v.unit
-        FROM predictions p
-        inner join coord c on p.coord_id = c.coord_id
-        inner join public.forecasts f on p.forecast_id = f.forecast_id
-        inner join public.variables v on p.variable_id = v.variable_id
-        order by forecast_time asc;
+            {latitude} as lat,
+            {longitude} as lon
+        ),
+        pt AS (
+        SELECT ST_Transform(ST_SetSRID(ST_MakePoint(lat, lon), 4326), 990000) AS pt
+        from coords
+        )
+        SELECT
+            b as band,
+            ST_Value(raster, b, pt.pt) as value,
+            lat,
+            lon
+        FROM {table}
+            cross join coords
+            CROSS JOIN pt
+            CROSS JOIN generate_series(1, 48) b
+        WHERE ST_Intersects(pt.pt, st_convexhull(raster));
     """
     ).format(
         latitude=sql.Literal(lat),
         longitude=sql.Literal(lon),
+        table=sql.Identifier(table),
     )
     return execute_sql_as_dataframe(conn_details, query)

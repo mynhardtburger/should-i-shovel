@@ -1,13 +1,13 @@
 import os
 import subprocess
 from datetime import datetime, timedelta, timezone
-from io import BytesIO, StringIO
-from operator import index
+from fileinput import filename
+from io import BytesIO
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-from textwrap import indent
 from typing import Any
 
 import boto3
+import pandas as pd
 import psycopg
 import requests
 from predictions import execute_sql_as_dataframe
@@ -180,41 +180,56 @@ def get_s3_filelisting(aws_bucket: str, prefix: str = "") -> list[dict[str, Any]
     return contents
 
 
-def file_name_info(path: str) -> dict[str, str]:
+def file_name_info(full_path: str) -> dict[str, str]:
     """Returns a dictionary of the filename split into its component parts."""
-    filename = path.split("/")[-1]
 
-    return name_format_polar_stereographic_grid(filename=filename)
+    return name_format_polar_stereographic_grid(full_path=full_path)
 
 
-def name_format_polar_stereographic_grid(filename: str) -> dict[str, str]:
+def name_format_polar_stereographic_grid(full_path: str) -> dict[str, str]:
     """Split the filename into its parts based on the polar-stereographic
     nomenclature as defined here:
     https://eccc-msc.github.io/open-data/msc-data/nwp_hrdps/readme_hrdps-datamart_en/
 
     Returns a dictionary of the components."""
-    period_parts = filename.split(".")
 
-    file_extension = period_parts[-1]
+    fullpath, sep_period, file_extension = full_path.rpartition(".")
     assert file_extension == "grib2"
 
-    base_filename = ".".join(period_parts[:-1])
-    underscore_parts = base_filename.split("_")
-    assert len(underscore_parts) == 9
+    base_path, sep_slash, filename = fullpath.rpartition("/")
+    filename_parts = filename.split("_")
+    assert len(filename_parts) == 9
+
+    forecast_start_timestamp = datetime.strptime(
+        f"{filename_parts[7]}00 +0000", "%Y%m%d%H%M %z"
+    )
+    forecast_interval_offset = timedelta(
+        hours=int(filename_parts[8].split("-")[0][1:]),
+        minutes=int(filename_parts[8].split("-")[1]),
+    )
+    forecast_timestamp = forecast_start_timestamp + forecast_interval_offset
 
     components = {
-        "source": underscore_parts[0],
-        "model": underscore_parts[1],
-        "domain": underscore_parts[2],
-        "variable": underscore_parts[3],
-        "leveltype": underscore_parts[4],
-        "level": underscore_parts[5],
-        "resolution": underscore_parts[6],
-        "forecast_startdate": underscore_parts[7][:-2],
-        "run_time_hour": underscore_parts[7][-2:],
-        "forecast_hour": underscore_parts[8].split("-")[0],
-        "forecast_minute": underscore_parts[8].split("-")[1],
-        "file_extension": file_extension,
+        "full_path": full_path,
+        "base_path": base_path + sep_slash,
+        "filename": filename + file_extension,
+        "base_filename": filename,
+        "file_extension": sep_period + file_extension,
+        "forecast_string": "_".join(filename_parts[:8]),
+        "source": filename_parts[0],
+        "model": filename_parts[1],
+        "domain": filename_parts[2],
+        "variable": filename_parts[3],
+        "leveltype": filename_parts[4],
+        "level": filename_parts[5],
+        "resolution": filename_parts[6],
+        "forecast_start_timestamp": forecast_start_timestamp,
+        "forecast_interval_offset": forecast_interval_offset,
+        "forecast_timestamp": forecast_timestamp,
+        "forecast_startdate": filename_parts[7][:-2],
+        "run_time_hour": filename_parts[7][-2:],
+        "forecast_hour": filename_parts[8].split("-")[0][1:],
+        "forecast_minute": filename_parts[8].split("-")[1],
     }
 
     return components
@@ -275,7 +290,7 @@ def load_to_postgis(
         vrt = subprocess.Popen(
             [
                 "raster2pgsql",
-                "-d",  # Drops the table, then recreates it and populates it with current raster data.
+                "-a",  # Append to the existing table
                 "-I",  # Create a GIST spatial index on the raster column.
                 "-q",  # Wrap PostgreSQL identifiers in quotes.
                 "-t",  # Cut raster into tiles to be inserted one per table row.
@@ -284,6 +299,7 @@ def load_to_postgis(
                 srid,
                 "-f",  # Specify the name of the raster column
                 "raster",
+                "-F",  # Add filename column
                 "-Y",  # Use copy statements instead of insert statements.
                 vrt_path,
                 schema_table,
@@ -308,8 +324,8 @@ def load_to_postgis(
         )
 
     except subprocess.CalledProcessError as e:
-        print("Error:", e)
-        errors.append(e)
+        print("Error:", e.stderr)
+        errors.append(e.stderr)
         return errors
     else:
         print(psql.stdout)
@@ -328,12 +344,17 @@ def full_refresh(
 
     # cycle through variables and update each
     for var in variables:
-        var_str = "_".join(var)
-        s3_prefix = f"gribs/{var_str}"
         download_urls = create_urls(
-            latest_url["baseurl"], model_run=latest_url["forecast"], **var
+            latest_url["baseurl"],
+            model_run=latest_url["forecast"],
+            date=latest_url["date"],
+            **var,
         )
         assert len(download_urls) > 0
+
+        forecast_info = file_name_info(download_urls[0])
+        print("forecast_info:", forecast_info)
+        s3_prefix = f"gribs/"
 
         prior_folder_contents = get_s3_filelisting(
             aws_bucket=aws_bucket, prefix=s3_prefix
@@ -360,35 +381,136 @@ def full_refresh(
                 pass
         assert len(downloaded_files) > 0
 
-        vrt = create_vrt(downloaded_files, f"{var_str}.vrt", bucket=aws_bucket)
+        vrt = create_vrt(
+            downloaded_files,
+            f"""{forecast_info["forecast_string"]}.vrt""",
+            bucket=aws_bucket,
+        )
         print(vrt)
         assert isinstance(vrt, str)
 
-        psql = load_to_postgis(vrt, "public", "var_str", conn_details)
+        insert_variables = insert_variables_record(forecast_info, conn_details)
+        print(insert_variables)
+
+        psql = load_to_postgis(vrt, "public", "predictions", conn_details)
         assert isinstance(psql, str)
         print(psql)
         results.append(psql)
     return results
 
 
-# pg_connection_dict = {
-#     "dbname": os.environ["AWS_RDS_DB"],
-#     "user": os.environ["AWS_RDS_USER"],
-#     "password": os.environ["AWS_RDS_PASSWORD"],
-#     "port": os.environ["AWS_RDS_PORT"],
-#     "host": os.environ["AWS_RDS_HOST"],
-# }
+def delete_objects_from_bucket(
+    aws_bucket: str, file_list: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Delete list of files from AWS bucket."""
+    s3_client = boto3.client("s3")
+    response = s3_client.delete_objects(
+        Bucket=aws_bucket,
+        Delete={"Objects": [{"Key": file["Key"]} for file in file_list]},
+    )
+    return response
 
-# bucket = "sto01.dev.us-east-2.aws.shouldishovel.com"
-# vrt = create_vrt(
-#     get_s3_filelisting(
-#         bucket, "gribs/CMC_hrdps_continental_TMP_TGL_2_ps2.5km_2023010612_P"
-#     ),
-#     "dataset.vrt",
-#     bucket,
-# )
-# print(vrt)
-# assert isinstance(vrt, str)
-# output = load_to_postgis(vrt, "public", "TMP_TGL", pg_connection_dict)
-# assert isinstance(output, str)
-# print(output)
+
+def insert_variables_record(
+    file_name_info: dict[str, str], conn_details: dict[str, str]
+) -> dict[str, Any]:
+    columns = [
+        "filename",
+        "forecast_string",
+        "forecast_start_timestamp",
+        "source",
+        "model",
+        "domain",
+        "variable",
+        "leveltype",
+        "level",
+        "resolution",
+    ]
+    on_conflict_columns = columns[1:]
+
+    sql_statement = sql.SQL(
+        """INSERT INTO {table} ({columns}) VALUES (
+        {val_filename},
+        {val_forecast_string},
+        {val_forecast_start_timestamp},
+        {val_source},
+        {val_model},
+        {val_domain},
+        {val_variable},
+        {val_leveltype},
+        {val_level},
+        {val_resolution}
+        )
+        ON CONFLICT ("filename") DO UPDATE
+        SET ({conflict_columns}) = (
+            {val_forecast_string},
+            {val_forecast_start_timestamp},
+            {val_source},
+            {val_model},
+            {val_domain},
+            {val_variable},
+            {val_leveltype},
+            {val_level},
+            {val_resolution})
+        WHERE "variables"."filename" = {val_filename}
+        """
+    ).format(
+        table=sql.Identifier("public", "variables"),
+        columns=sql.SQL(", ").join(sql.Identifier(col) for col in columns),
+        val_filename=sql.Literal(file_name_info["forecast_string"] + ".vrt"),
+        val_forecast_string=sql.Literal(file_name_info["forecast_string"]),
+        val_forecast_start_timestamp=sql.Literal(
+            file_name_info["forecast_start_timestamp"]
+        ),
+        val_source=sql.Literal(file_name_info["source"]),
+        val_domain=sql.Literal(file_name_info["domain"]),
+        val_model=sql.Literal(file_name_info["domain"]),
+        val_variable=sql.Literal(file_name_info["variable"]),
+        val_leveltype=sql.Literal(file_name_info["leveltype"]),
+        val_level=sql.Literal(file_name_info["level"]),
+        val_resolution=sql.Literal(file_name_info["resolution"]),
+        conflict_columns=sql.SQL(", ").join(
+            sql.Identifier(col) for col in on_conflict_columns
+        ),
+    )
+
+    with psycopg.connect(**conn_details, autocommit=True) as conn:
+        with conn.cursor() as curr:
+            res = curr.execute(sql_statement)
+
+    return {
+        "statusmessage": res.statusmessage,
+        "rowcount": res.rowcount,
+    }
+
+
+def delete_variables_record(
+    file_name: str, conn_details: dict[str, str]
+) -> dict[str, Any]:
+    sql_statement = sql.SQL(
+        """DELETE FROM {table} WHERE {col_filename} = {val_filename}
+        RETURNING *"""
+    ).format(
+        table=sql.Identifier("public", "variables"),
+        col_filename=sql.Identifier("filename"),
+        val_filename=sql.Literal(file_name),
+    )
+
+    with psycopg.connect(**conn_details, autocommit=True) as conn:
+        with conn.cursor() as curr:
+            res = curr.execute(sql_statement)
+
+    return {
+        "statusmessage": res.statusmessage,
+        "rowcount": res.rowcount,
+    }
+
+
+def list_variables_records(conn_details: dict[str, str]) -> pd.DataFrame:
+    sql_statement = sql.SQL(
+        """
+            SELECT * FROM {table}
+        """
+    ).format(table=sql.Identifier("public", "variables"))
+
+    return execute_sql_as_dataframe(conn_details, sql_statement)
