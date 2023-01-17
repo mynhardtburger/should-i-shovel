@@ -34,17 +34,24 @@ def find_latest_forecast(
             request_url = f"{baseurl}{forecast_hour:03}/"
             res = requests.head(request_url)
             if res.status_code == 200:
-                print("Success:", baseurl, date, forecast)
+                print(
+                    "Latest forecast is:",
+                    baseurl,
+                    "date:",
+                    date,
+                    "forecast hour:",
+                    forecast,
+                )
                 return {"baseurl": baseurl, "date": date, "forecast": forecast}
-            else:
-                print("Status code:", res.status_code, request_url)
+            # else:
+            # print("Status code:", res.status_code, request_url)
 
     return {"baseurl": "", "date": "", "forecast": ""}
 
 
 def create_urls(
     base_url: str = "https://hpfx.collab.science.gc.ca/20221221/WXO-DD/model_hrdps/continental/grib2/06/",
-    forecast_hours: list[str] = [f"{(i):03}" for i in range(1, 49)],
+    forecast_hours: list[str] = [f"{(i):03}" for i in range(0, 49)],
     prefix: str = "CMC",
     model: str = "hrdps",
     domain: str = "continental",
@@ -166,17 +173,17 @@ def get_s3_filelisting(aws_bucket: str, prefix: str = "") -> list[dict[str, Any]
         Bucket=aws_bucket, Prefix=prefix, PaginationConfig={"PageSize": 1000}
     )
 
-    print("File listing:")
+    print("Retriving AWS S3 file listing...", end=" ")
     for page in response:
         files = page.get("Contents")
         if not files:
-            print("None")
+            # print("None")
             return contents
 
         for file in files:
-            print(f"file_name: {file['Key']}, size: {file['Size']}")
+            # print(f"file_name: {file['Key']}, size: {file['Size']}")
             contents.append(file)
-
+    print(f"{len(contents)} files")
     return contents
 
 
@@ -215,6 +222,7 @@ def name_format_polar_stereographic_grid(full_path: str) -> dict[str, str]:
         "filename": filename + file_extension,
         "base_filename": filename,
         "file_extension": sep_period + file_extension,
+        "forecast_base_string": "_".join(filename_parts[:7]),
         "forecast_string": "_".join(filename_parts[:8]),
         "source": filename_parts[0],
         "model": filename_parts[1],
@@ -338,6 +346,8 @@ def full_refresh(
     last_forecast_hour: int,
     conn_details: dict[str, str],
 ):
+    print("Refreshing weather data...")
+
     # get latest forecast hour
     latest_url = find_latest_forecast(last_forecast_hour)
     results: list[str] = []
@@ -353,8 +363,18 @@ def full_refresh(
         assert len(download_urls) > 0
 
         forecast_info = file_name_info(download_urls[0])
-        print("forecast_info:", forecast_info)
-        s3_prefix = f"gribs/"
+        # print("forecast_info:", forecast_info)
+        s3_prefix = f"""gribs/{forecast_info["forecast_base_string"]}"""
+
+        if does_prediction_data_exist(
+            conn_details=conn_details, forecast_string=forecast_info["forecast_string"]
+        ):
+            message = f"""Prediction data already exists. Skipping: {forecast_info["forecast_string"]}"""
+            print(message)
+            results.append(message)
+            continue
+
+        print("Downloading prediction data for:", forecast_info["forecast_string"])
 
         prior_folder_contents = get_s3_filelisting(
             aws_bucket=aws_bucket, prefix=s3_prefix
@@ -396,6 +416,8 @@ def full_refresh(
         assert isinstance(psql, str)
         print(psql)
         results.append(psql)
+
+    print("Done.")
     return results
 
 
@@ -403,6 +425,7 @@ def delete_objects_from_bucket(
     aws_bucket: str, file_list: list[dict[str, Any]]
 ) -> dict[str, Any]:
     """Delete list of files from AWS bucket."""
+    print("Deleting AWS S3 objects...")
     s3_client = boto3.client("s3")
     response = s3_client.delete_objects(
         Bucket=aws_bucket,
@@ -416,6 +439,7 @@ def insert_variables_record(
 ) -> dict[str, Any]:
     columns = [
         "filename",
+        "forecast_base_string",
         "forecast_string",
         "forecast_start_timestamp",
         "source",
@@ -431,6 +455,7 @@ def insert_variables_record(
     sql_statement = sql.SQL(
         """INSERT INTO {table} ({columns}) VALUES (
         {val_filename},
+        {val_forecast_base_string},
         {val_forecast_string},
         {val_forecast_start_timestamp},
         {val_source},
@@ -443,6 +468,7 @@ def insert_variables_record(
         )
         ON CONFLICT ("filename") DO UPDATE
         SET ({conflict_columns}) = (
+            {val_forecast_base_string},
             {val_forecast_string},
             {val_forecast_start_timestamp},
             {val_source},
@@ -458,6 +484,7 @@ def insert_variables_record(
         table=sql.Identifier("public", "variables"),
         columns=sql.SQL(", ").join(sql.Identifier(col) for col in columns),
         val_filename=sql.Literal(file_name_info["forecast_string"] + ".vrt"),
+        val_forecast_base_string=sql.Literal(file_name_info["forecast_base_string"]),
         val_forecast_string=sql.Literal(file_name_info["forecast_string"]),
         val_forecast_start_timestamp=sql.Literal(
             file_name_info["forecast_start_timestamp"]
@@ -484,33 +511,128 @@ def insert_variables_record(
     }
 
 
-def delete_variables_record(
-    file_name: str, conn_details: dict[str, str]
-) -> dict[str, Any]:
+def delete_variable_record(file_name: str, conn_details: dict[str, str]) -> list[tuple]:
+    """Deletes the records matching the VRT file name"""
     sql_statement = sql.SQL(
-        """DELETE FROM {table} WHERE {col_filename} = {val_filename}
+        """DELETE FROM public.variables WHERE filename = {val_filename}
         RETURNING *"""
     ).format(
-        table=sql.Identifier("public", "variables"),
-        col_filename=sql.Identifier("filename"),
         val_filename=sql.Literal(file_name),
     )
 
     with psycopg.connect(**conn_details, autocommit=True) as conn:
         with conn.cursor() as curr:
-            res = curr.execute(sql_statement)
+            res = curr.execute(sql_statement).fetchall()
 
-    return {
-        "statusmessage": res.statusmessage,
-        "rowcount": res.rowcount,
-    }
+    return res
 
 
-def list_variables_records(conn_details: dict[str, str]) -> pd.DataFrame:
-    sql_statement = sql.SQL(
-        """
-            SELECT * FROM {table}
-        """
-    ).format(table=sql.Identifier("public", "variables"))
+def list_variables_records(
+    conn_details: dict[str, str], forecast_string_like_pattern: str = ""
+) -> pd.DataFrame:
+    if forecast_string_like_pattern == "":
+        sql_statement = sql.SQL(
+            """
+                SELECT * FROM {table}
+            """
+        ).format(table=sql.Identifier("public", "variables"))
+    else:
+        sql_statement = sql.SQL(
+            """
+                SELECT * FROM {table}
+                WHERE {col_forecast_string} LIKE {val_forecast_string_filter}
+            """
+        ).format(
+            table=sql.Identifier("public", "variables"),
+            col_forecast_string=sql.Identifier("forecast_string"),
+            val_forecast_string_filter=sql.Literal(forecast_string_like_pattern),
+        )
 
     return execute_sql_as_dataframe(conn_details, sql_statement)
+
+
+def list_orphan_bucket_objects(
+    filter_pattern: str, aws_bucket: str, conn_details: dict[str, str]
+):
+    """Finds all orphaned bucket objects and returns the orphans containing the filter_pattern"""
+    print("Searching for orphaned objects...")
+    complete_object_listing = get_s3_filelisting(aws_bucket=aws_bucket)
+
+    variables_in_postgis = list_variables_records(
+        conn_details=conn_details,
+        forecast_string_like_pattern=f"%{filter_pattern}%",
+    )
+    # print(f"""{len(variables_in_postgis["filename"])} variables in PostGIS.""")
+
+    orphaned_objects = []
+    for file in complete_object_listing:
+        orphan = True
+        if filter_pattern not in file["Key"]:
+            # print(
+            #     "Excluded by filter pattern. object name:",
+            #     file["Key"],
+            #     "filter_pattern:",
+            #     filter_pattern,
+            # )
+            continue
+        for forecast_string in variables_in_postgis["forecast_string"].values:
+            if forecast_string in file["Key"]:
+                # print(
+                #     "Valid. object name:",
+                #     file["Key"],
+                #     "forecast_string:",
+                #     forecast_string,
+                # )
+                orphan = False
+                break
+        if orphan:
+            print(
+                "Orphan. object name:",
+                file["Key"],
+                # "filter_pattern:",
+                # filter_pattern,
+            )
+            orphaned_objects.append(file)
+
+    print(f"{len(orphaned_objects)} orphaned objects.")
+    return orphaned_objects
+
+
+def list_latest_variable_records(conn_details: dict[str, str]) -> pd.DataFrame:
+    """Return the most recent instance of each variable loaded."""
+    sql_statement = sql.SQL(
+        """
+        with latest as (
+            select
+                forecast_base_string ,
+                max(forecast_start_timestamp) as forecast_start_timestamp
+            from variables v
+            group by forecast_base_string
+        )
+        select
+            *
+        from variables v
+        inner join latest on
+            v.forecast_base_string = latest.forecast_base_string
+            and v.forecast_start_timestamp=latest.forecast_start_timestamp
+    """
+    )
+    return execute_sql_as_dataframe(conn_details=conn_details, sql_query=sql_statement)
+
+
+def does_prediction_data_exist(
+    conn_details: dict[str, str], forecast_string: str
+) -> bool:
+    sql_statement = sql.SQL(
+        """
+        select distinct
+	        filename
+        from predictions p
+        where filename = {forecast_string}
+        """
+    ).format(forecast_string=sql.Literal(f"{forecast_string}.vrt"))
+    predictions = execute_sql_as_dataframe(
+        conn_details=conn_details, sql_query=sql_statement
+    )
+
+    return len(predictions) > 0

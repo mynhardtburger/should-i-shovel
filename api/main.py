@@ -9,11 +9,14 @@ import geocoder
 import predictions
 from data_management import (
     delete_objects_from_bucket,
-    delete_variables_record,
+    delete_variable_record,
+    does_prediction_data_exist,
     file_name_info,
     find_latest_forecast,
     full_refresh,
     get_s3_filelisting,
+    list_latest_variable_records,
+    list_orphan_bucket_objects,
     list_variables_records,
 )
 from fastapi import FastAPI
@@ -47,12 +50,31 @@ def read_root():
     return {"Hello": "World"}
 
 
-@app.get("/forecast/")
-def get_forecast(table: str, latitude: float, longitude: float):
-    """Returns the forecast from a specified table for a set of coordiantes in a pandas DataFrame"""
+@app.get("/forecast/coordinates")
+def get_forecast(
+    latitude: float,
+    longitude: float,
+):
+    """Returns the forecast for a set of coordiantes"""
     return predictions.get_nearest_predictions_as_df(
-        pg_connection_dict, table, latitude, longitude
-    )
+        conn_details=pg_connection_dict,
+        latitude=latitude,
+        longitude=longitude,
+    ).to_dict("records")
+
+
+@app.get("/forecast/address")
+def get_forecast_from_address(address: str):
+    """Returns the forecast for an address"""
+    latitude, longitude = get_address_coordinates(address=address)
+    if (not latitude) or (not longitude):
+        return f"Coordinates not found for address. Try being more specific."
+
+    return predictions.get_nearest_predictions_as_df(
+        conn_details=pg_connection_dict,
+        latitude=latitude,
+        longitude=longitude,
+    ).to_dict("records")
 
 
 @app.get("/address/")
@@ -65,6 +87,9 @@ def get_address_coordinates(address: str) -> tuple[float, float]:
     if g.error == "REQUEST_DENIED":
         logging.critical(f"API error: {g.error}")
 
+    if (not g.lat) or (not g.lng):
+        print("Coordinates not found for address. Try being more specific.")
+    print(f"Latitude: {g.lat} Longitude: {g.lng}")
     return g.lat, g.lng
 
 
@@ -182,10 +207,51 @@ def get_filename_components(fullpath: str) -> dict[str, str]:
 @app.get("/data_management/delete_variable")
 def delete_variable(file_name: str):
     """Deletes the variable with the given filename."""
-    return delete_variables_record(file_name=file_name, conn_details=pg_connection_dict)
+    return delete_variable_record(file_name=file_name, conn_details=pg_connection_dict)
 
 
 @app.get("/data_management/list_variables")
 def list_variables():
     """Returns the full variables table."""
-    return list_variables_records(conn_details=pg_connection_dict)
+    return list_variables_records(conn_details=pg_connection_dict).to_dict("records")
+
+
+@app.get("/data_management/list_orphaned_bucket_objects")
+def list_orphan_objects(filter_pattern: str = ""):
+    """Finds all orphaned bucket objects and returns the orphans containing the filter_pattern."""
+    return list_orphan_bucket_objects(
+        filter_pattern=filter_pattern,
+        aws_bucket=aws_bucket,
+        conn_details=pg_connection_dict,
+    )
+
+
+@app.get("/data_management/delete_orphaned_bucket_objects")
+def delete_orphan_objects(filter_pattern: str = ""):
+    """Deletes all orphaned bucket objects."""
+    orphaned_objects = list_orphan_bucket_objects(
+        filter_pattern=filter_pattern,
+        aws_bucket=aws_bucket,
+        conn_details=pg_connection_dict,
+    )
+
+    if not orphaned_objects:
+        return f"No orphaned objects found to be deleted."
+
+    return delete_objects_from_bucket(aws_bucket=aws_bucket, file_list=orphaned_objects)
+
+
+@app.get("/data_management/list_latest_variables")
+def list_latest_variables():
+    """Return the most recent instance of each variable loaded."""
+    return list_latest_variable_records(conn_details=pg_connection_dict).to_dict(
+        "records"
+    )
+
+
+@app.get("/data_management/prediction_data_exists")
+def prediction_data_exists(forecast_string: str):
+    """Returns True if the prediction data already exists within the DB."""
+    return does_prediction_data_exist(
+        conn_details=pg_connection_dict, forecast_string=forecast_string
+    )

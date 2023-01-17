@@ -16,6 +16,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 
     CREATE TABLE public.variables (
         filename text NOT NULL,
+        forecast_base_string text NOT NULL,
         forecast_string text NOT NULL,
         forecast_start_timestamp timestamptz NOT NULL,
         source text NOT NULL,
