@@ -28,7 +28,7 @@ def execute_sql_as_dataframe(
 
 def get_nearest_predictions_as_df(
     conn_details: dict[str, str], latitude: float, longitude: float
-) -> pd.DataFrame:
+) -> list[pd.DataFrame]:
     """Obtains the nearest prediction to the coordinates provided returing the data in a dataframe."""
     query = sql.SQL(
         """
@@ -71,18 +71,24 @@ def get_nearest_predictions_as_df(
             leveltype ,
             var_details.level,
             forecast_start_timestamp ,
-            forecast_start_timestamp + interval '1 hour' * (b -1) as forecast_timestatemp
+            forecast_start_timestamp + interval '1 hour' * (b -1) as forecast_timestamp
         FROM predictions p
             cross join coords
             CROSS JOIN pt
             CROSS JOIN generate_series(1, 49) b
             inner join var_details on var_details.filename = p.filename
         WHERE ST_Intersects(pt.pt, st_convexhull(raster))
-        order by latitude, longitude, variable, leveltype, level, forecast_timestatemp;
+        order by latitude, longitude, variable, leveltype, level, forecast_timestamp;
     """
     ).format(
         latitude=sql.Literal(latitude),
         longitude=sql.Literal(longitude),
         # table=sql.Identifier(table),
     )
-    return execute_sql_as_dataframe(conn_details, query)
+    df = execute_sql_as_dataframe(conn_details, query)
+    if len(df) > 0:
+        df_list = []
+        for var in df["variable"].unique():
+            df_list.append(df.loc[df["variable"] == var].to_dict("list"))
+        return df_list
+    return [df]
