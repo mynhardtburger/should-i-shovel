@@ -34,7 +34,7 @@ aws_bucket = os.environ["AWS_BUCKET"]
 
 app = FastAPI()
 
-origins = ["http://localhost:1234"]
+origins = ["http://localhost:8080"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,7 +60,7 @@ def get_forecast(
         conn_details=pg_connection_dict,
         latitude=latitude,
         longitude=longitude,
-    ).to_dict("records")
+    )
 
 
 @app.get("/forecast/address")
@@ -74,7 +74,7 @@ def get_forecast_from_address(address: str):
         conn_details=pg_connection_dict,
         latitude=latitude,
         longitude=longitude,
-    ).to_dict("records")
+    )
 
 
 @app.get("/address/")
