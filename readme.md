@@ -33,8 +33,9 @@ To answer this I'm building a small web app. My focus is not on the forecasting 
     * get_forecast api end point data structure updated to return list of forecasts split by forecast variable to simplify front end logic.
 * Front end:
     * Implemented google maps map. Was simpler to implement compared to leaflet.
-    * On load centers at user's location using browser's geolocation
-    * clicking on the map triggers API call to fetch forecast for the location
-    * Graphs of results still work in progress
+    * On load centers at user's location using browser's geolocation.
+    * clicking on the map triggers API call to fetch forecast for the location.
+    * Graphs of results still work in progress.
+    * Switch to webpack for bundling from parcel.
 ### 2023-01-12
 First public commit. The repo is still quite messy, but the structure of the infrastructure and roughly defined and many of the API functions have been coded.
