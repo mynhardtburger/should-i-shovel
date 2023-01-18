@@ -3,10 +3,13 @@
 
 <head>
     <title>Should I Shovel?</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+    <!-- <link href="./style.css" rel="stylesheet" /> -->
+    <!-- <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI=" crossorigin=""/> -->
 </head>
 
 <body>
-    <div style="width: 500px;">
+    <!-- <div style="width: 500px;">
         <label for="fname">Latitude:</label><br>
         <input type="text" id="f_lat" name="f_lat" value="50.795127"><br>
         <label for="lname">Longitude:</label><br>
@@ -17,18 +20,20 @@
         <label for="fname">address:</label><br>
         <input type="text" id="address" name="address" value="33 eigth street etobicoke"><br>
         <button id='getData_address'>Get forecast</button>
-    </div><br />
-    <div style="width: 800px;"><canvas id="charts"></canvas></div>
+    </div><br /> -->
+    <div class="container">
+        <div id="map"></div>
 
-    <!-- <div style="width: 500px;"><canvas id="dimensions"></canvas></div><br />
-    <div style="width: 800px;"><canvas id="acquisitions"></canvas></div>
+        <div id="charts_area"><canvas id="charts"></canvas></div>
+    </div>
 
-    <script type="module" src="dimensions.js"></script>
-    <script type="module" src="acquisitions.js"></script> -->
-    <script type="module" src="shouldishovel.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@^4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/moment@^2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@^1"></script> -->
+    <!-- <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM=" crossorigin=""></script> -->
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&callback=initMap&v=weekly"
+      defer
+    ></script>
+
+    <script type=module src="./index.bundle.js"></script>
 </body>
 
 </html>

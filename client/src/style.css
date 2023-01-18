@@ -1,0 +1,23 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+}
+
+#map {
+    /* height: 100%; */
+    width: 50%;
+}
+
+#charts_area {
+    /* height: 100%; */
+    width: 50%;
+    /* background: #ce8888; */
+}
+
