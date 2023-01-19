@@ -6,6 +6,7 @@ echo "Apply custom setup to $POSTGRES_DB"
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
     CREATE EXTENSION IF NOT EXISTS postgis_raster;
     INSERT INTO spatial_ref_sys (srid, proj4text) values (990000, '+proj=stere +lat_0=90 +lat_ts=60 +lon_0=252 +x_0=0 +y_0=0 +R=6371229 +units=m +no_defs');
+    INSERT INTO spatial_ref_sys (srid, proj4text) values (990001, '+proj=ob_tran +o_proj=longlat +o_lon_p=0 +o_lat_p=36.08852 +lon_0=-114.694858 +R=6371229 +no_defs');
 
     CREATE TABLE public.predictions (
         rid serial PRIMARY KEY,
