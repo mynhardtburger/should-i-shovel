@@ -17,14 +17,23 @@ To answer this I'm building a small web app. My focus is not on the forecasting 
 ### Todo
 - [ ] Finalize terraform/docker structure so that updates can be pushed via git commits
 - [ ] Setup auto data refresh schedule
-- [x] Implement map in front end
 - [ ] Implement graphs for all weather variables in front end
+    - [ ] Text verbage of should I shovel? No, likely & when
+    - [ ] Highlight timeband during which shoveling is likely necessary "shovel time"
+    - [ ] Create API endpoint to provide list of time indices where shoveling is likely -> shovel time.
+    - [ ] Graph labels/colors/legends are correct
+    - [ ] Graphs updates with data
+- [x] Implement map in front end
 - [x] Finalize API queries to PostGIS to retrieve data
 - [x] Complete data refresh logic
     - [x] Data clean up after successful load
     - [x] Load raster data to PostGIS
     - [x] Retrieve latest grib2 files
     - [x] Determine latest forecast
+
+### 2023-01-18
+* Front end:
+    * Graphs are created for each variable and updates with data as you click on the map.
 
 ### 2023-01-17
 * Refresh logic:
