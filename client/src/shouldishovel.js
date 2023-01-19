@@ -2,9 +2,9 @@ import Chart from 'chart.js/auto';
 import 'chartjs-adapter-moment';
 import _ from 'lodash';
 
-var chart = null;
+let charts = {};
 
-export function get_forecast(lat, lng) {
+export function getForecast(lat, lng) {
   // lat = document.getElementById('f_lat').value;
   // lon = document.getElementById('f_lon').value;
 
@@ -15,13 +15,16 @@ export function get_forecast(lat, lng) {
     .then((data) => {
       console.log(data);
 
-      for (let forecast_var of data) {
+      let chartContainer = document.getElementById('charts_area');
+
+      for (let forecastVar of data) {
+        let canvasId = 'chart_' + forecastVar['variable'][0];
         const chartData = {
-          labels: Object.values(forecast_var['forecast_timestamp']),
+          labels: Object.values(forecastVar['forecast_timestamp']),
           datasets: [
             {
-              label: forecast_var['variable'][0],
-              data: Object.values(forecast_var['value']),
+              label: forecastVar['variable'][0],
+              data: Object.values(forecastVar['value']),
               borderColor: 'rgb(255, 99, 132)',
               fill: false,
               cubicInterpolationMode: 'monotone',
@@ -30,20 +33,26 @@ export function get_forecast(lat, lng) {
           ],
         };
 
-        if (chart === null) {
-          chart = draw_chart(chartData);
+        if (canvasId in charts) {
+          charts[canvasId].data.labels = chartData.labels;
+          charts[canvasId].data.datasets = chartData.datasets;
+          charts[canvasId].update();
         } else {
-          // chart.data.labels = chartData.labels;
-          // chart.data.datasets = chartData.datasets;
-          // chart.update();
+          let newCanvas = document.createElement('canvas');
+          newCanvas.setAttribute('id', canvasId);
+          chartContainer.appendChild(newCanvas);
+          charts[canvasId] = drawChart(
+            chartData,
+            document.getElementById(canvasId)
+          );
         }
       }
     })
     .catch(console.error);
 }
 
-export function draw_chart(chartdata) {
-  return new Chart(document.getElementById('charts'), {
+export function drawChart(chartdata, canvasElement) {
+  return new Chart(canvasElement, {
     type: 'line',
     data: chartdata,
     options: {
@@ -99,7 +108,7 @@ export function get_forecast_for_address() {
       if (coords[0] === null) {
         console.log('No coordinates found');
       } else {
-        get_forecast(coords[0], coords[1]);
+        getForecast(coords[0], coords[1]);
       }
     })
     .catch(console.error);

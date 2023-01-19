@@ -1,4 +1,4 @@
-import { get_forecast } from './shouldishovel';
+import { getForecast } from './shouldishovel';
 import './style.css';
 
 function printMe() {
@@ -46,10 +46,9 @@ function initMap() {
             lng: position.coords.longitude,
           };
 
-          infoWindow.setPosition(pos);
-          infoWindow.setContent('Location found.');
-          infoWindow.open(map);
           map.setCenter(pos);
+          addMarker(pos);
+          getForecast(pos.lat, pos.lng);
         },
         () => {
           handleLocationError(true, infoWindow, map.getCenter());
@@ -67,7 +66,7 @@ function initMap() {
     addMarker(mapsMouseEvent.latLng);
     map.panTo(mapsMouseEvent.latLng);
     console.log(mapsMouseEvent.latLng.toString());
-    get_forecast(mapsMouseEvent.latLng.lat(), mapsMouseEvent.latLng.lng());
+    getForecast(mapsMouseEvent.latLng.lat(), mapsMouseEvent.latLng.lng());
   });
 }
 
