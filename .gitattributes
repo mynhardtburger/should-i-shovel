@@ -1,0 +1,5 @@
+api/ linguist-vendored=false
+client/src linguist-vendored=false
+containers/ linguist-vendored=false
+notebooks/ linguist-vendored=false
+terraform/ linguist-vendored=false
