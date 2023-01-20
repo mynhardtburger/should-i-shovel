@@ -32,53 +32,60 @@ def get_nearest_predictions_as_df(
     """Obtains the nearest prediction to the coordinates provided returing the data in a dataframe."""
     query = sql.SQL(
         """
-        with coords as (
-            select
-                {latitude} as latitude,
-                {longitude} as longitude
+        WITH coords AS (
+            SELECT
+                {latitude} AS latitude,
+                {longitude} AS longitude
         ),
         pt AS (
             SELECT
-                ST_Transform(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), 990000) AS pt
-            from coords
+                ST_Transform(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), 990001) AS pt
+            FROM coords
         ),
         latest as (
-            select
+            SELECT
                 forecast_base_string,
                 max(forecast_start_timestamp) as forecast_start_timestamp
-            from variables v
+            FROM variables v
             group by forecast_base_string
         ),
-        var_details as (
-        select
+        var_details AS (
+        SELECT
             v2.filename ,
             v2.forecast_string ,
             v2.variable ,
+            v2.model ,
             v2.leveltype ,
             v2."level" ,
             v2.forecast_start_timestamp
-        from variables v2
-        inner join latest on
+        FROM variables v2
+        INNER JOIN latest ON
             latest.forecast_start_timestamp = v2.forecast_start_timestamp
-            and latest.forecast_base_string = v2.forecast_base_string
+            AND latest.forecast_base_string = v2.forecast_base_string
         )
         SELECT
-            b - 1 as band,
+            b - 1 AS band,
             ST_Value(raster, b, pt.pt) as value,
+            variable_definitions.unit,
             latitude,
             longitude,
-            variable,
+            var_details.model,
+            var_details.variable,
+            variable_definitions.description AS "variable_description",
             leveltype ,
             var_details.level,
             forecast_start_timestamp ,
-            forecast_start_timestamp + interval '1 hour' * (b -1) as forecast_timestamp
+            forecast_start_timestamp + interval '1 hour' * (b -1) AS forecast_timestamp
         FROM predictions p
-            cross join coords
+            CROSS JOIN coords
             CROSS JOIN pt
-            CROSS JOIN generate_series(1, 49) b
-            inner join var_details on var_details.filename = p.filename
+            CROSS JOIN generate_series(1, 48) b
+            INNER JOIN var_details on var_details.filename = p.filename
+            LEFT JOIN variable_definitions ON
+                var_details.variable = variable_definitions.variable
+                AND var_details.model = variable_definitions.model
         WHERE ST_Intersects(pt.pt, st_convexhull(raster))
-        order by latitude, longitude, variable, leveltype, level, forecast_timestamp;
+        ORDER BY latitude, longitude, variable, leveltype, level, forecast_timestamp;
     """
     ).format(
         latitude=sql.Literal(latitude),

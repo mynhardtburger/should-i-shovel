@@ -16,7 +16,7 @@ from psycopg import sql
 
 def find_latest_forecast(
     forecast_hour: int,
-    url_path: str = "WXO-DD/model_hrdps/continental/grib2",
+    url_path: str = "WXO-DD/model_hrdps/continental/2.5km/grib2",
     domain: str = "https://hpfx.collab.science.gc.ca",
 ) -> dict[str, str]:
     """Find the latest model run.
@@ -49,9 +49,9 @@ def find_latest_forecast(
     return {"baseurl": "", "date": "", "forecast": ""}
 
 
-def create_urls(
+def create_urls_polar_stereo(
     base_url: str = "https://hpfx.collab.science.gc.ca/20221221/WXO-DD/model_hrdps/continental/grib2/06/",
-    forecast_hours: list[str] = [f"{(i):03}" for i in range(0, 49)],
+    forecast_hours: list[str] = [f"{(i):03}" for i in range(1, 49)],
     prefix: str = "CMC",
     model: str = "hrdps",
     domain: str = "continental",
@@ -71,6 +71,34 @@ def create_urls(
     for forecast_hour in forecast_hours:
         filename = f"{prefix}_{model}_{domain}_{variable}_{level_type}_{level}_{resolution}_{date}{int(model_run):02}_P{int(forecast_hour):03}-{int(minutes):02}.{extension}"
         download_url = f"{base_url.strip('/')}/{forecast_hour.strip('/')}/{filename}"
+        urls.append(download_url)
+
+    return urls
+
+
+def create_urls_rotated_lat_lon(
+    base_url: str = "https://hpfx.collab.science.gc.ca/20221221/WXO-DD/model_hrdps/continental/2.5km/grib2/06/",
+    forecast_hours: list[str] = [f"{(i):03}" for i in range(1, 49)],
+    prefix: str = "MSC",
+    model: str = "HRDPS-WEonG",
+    variable: str = "TMP",
+    level_type: str = "Sfc",
+    level: str = "",
+    grille: str = "RLatLon",
+    resolution: str = "0.0225",
+    date: str = datetime.now(timezone.utc).strftime("%Y%m%d"),
+    model_run: str = "00",
+    extension: str = "grib2",
+) -> list[str]:
+    """Create list of URLs given inputs.
+    URL structure: {base_url}/{forecast_hour}/{filename}
+    Filename structure: {date}T{model_run}Z_{prefix}_{model}_{variable}_{level_type}-{level}_{grille}{resolution}_PT{forecast_hour}H.{extension}"""
+    urls = []
+    for forecast_hour in forecast_hours:
+        filename = f"""{date}T{int(model_run):02}Z_{prefix}_{model}_{variable}_{level_type}{"-" if level else ""}{level}_{grille}{resolution}_P{"T" if model == "HRDPS-WEonG" else ""}{forecast_hour}{"H" if model == "HRDPS-WEonG" else ""}.{extension}"""
+        download_url = (
+            f"""{base_url.strip('/')}/{forecast_hour.strip('/')}/{filename}"""
+        )
         urls.append(download_url)
 
     return urls
@@ -125,6 +153,7 @@ def download_predictions_bulk(
     If successful returns aws cli std output.
     On error return list of exceptions."""
     errors: list[Exception] = []
+    # print("\n".join(download_urls))
 
     download_list = BytesIO("\n".join(download_urls).encode())
     s3_bucket_path = "s3://" + os.path.join(aws_bucket, prefix)
@@ -187,16 +216,27 @@ def get_s3_filelisting(aws_bucket: str, prefix: str = "") -> list[dict[str, Any]
     return contents
 
 
-def file_name_info(full_path: str) -> dict[str, str]:
-    """Returns a dictionary of the filename split into its component parts."""
+def file_name_info(full_path: str, format: str) -> dict[str, str]:
+    """Returns a dictionary of the filename split into its component parts.
 
-    return name_format_polar_stereographic_grid(full_path=full_path)
+    available formats:
+        "polar_stereo"\n
+        "rotated_lat_lon"
+    """
+    format_map = {
+        "polar_stereo": name_format_polar_stereographic_grid,
+        "rotated_lat_lon": name_format_rotated_lat_lon_grid,
+    }
+
+    return format_map[format](full_path)
 
 
 def name_format_polar_stereographic_grid(full_path: str) -> dict[str, str]:
     """Split the filename into its parts based on the polar-stereographic
     nomenclature as defined here:
     https://eccc-msc.github.io/open-data/msc-data/nwp_hrdps/readme_hrdps-datamart_en/
+
+    CMC_hrdps_domain_Variable_LevelType_level_ps2.5km_YYYYMMDDHH_Phhh-mm.grib2
 
     Returns a dictionary of the components."""
 
@@ -238,6 +278,62 @@ def name_format_polar_stereographic_grid(full_path: str) -> dict[str, str]:
         "run_time_hour": filename_parts[7][-2:],
         "forecast_hour": filename_parts[8].split("-")[0][1:],
         "forecast_minute": filename_parts[8].split("-")[1],
+    }
+
+    return components
+
+
+def name_format_rotated_lat_lon_grid(full_path: str) -> dict[str, str]:
+    """Split the filename into its parts based on the polar-stereographic
+    nomenclature as defined here:
+    https://eccc-msc.github.io/open-data/msc-data/nwp_hrdps/readme_hrdps-datamart_en/
+
+    {YYYYMMDD}T{HH}Z_MSC_HRDPS_{VAR}_{LVLTYPE-LVL}_{Grille}{resolution}_P{hhh}.grib2
+    {YYYYMMDD}T{HH}Z_MSC_HRDPS-WEonG_{VAR}_{LVLTYPE-LVL}_{Grille}{resolution}_PT{hhh}H.grib2
+
+    Returns a dictionary of the components."""
+
+    fullpath, sep_period, file_extension = full_path.rpartition(".")
+    assert file_extension == "grib2"
+
+    base_path, sep_slash, filename = fullpath.rpartition("/")
+    filename_parts = filename.split("_")
+    assert len(filename_parts) == 7
+
+    lvltype, _, lvl = filename_parts[4].partition("-")
+    forecast_startdate = filename_parts[0][:8]
+    forecast_starthour = filename_parts[0][9:11]
+    forecast_hour = "".join([s for s in filename_parts[-1] if s.isdigit()])
+
+    forecast_start_timestamp = datetime.strptime(
+        f"{forecast_startdate}{forecast_starthour}00 +0000", "%Y%m%d%H%M %z"
+    )
+    forecast_interval_offset = timedelta(
+        hours=int(forecast_hour),
+    )
+    forecast_timestamp = forecast_start_timestamp + forecast_interval_offset
+
+    components = {
+        "full_path": full_path,
+        "base_path": base_path + sep_slash,
+        "filename": filename + sep_period + file_extension,
+        "base_filename": filename,
+        "file_extension": sep_period + file_extension,
+        "forecast_base_string": "_".join(filename_parts[1:-1]),
+        "forecast_string": "_".join(filename_parts[:-1]),
+        "source": filename_parts[1],
+        "model": filename_parts[2],
+        "variable": filename_parts[3],
+        "leveltype": lvltype,
+        "level": lvl,
+        "grille": "RLatLon",
+        "resolution": filename_parts[6].removeprefix("RLatLon"),
+        "forecast_start_timestamp": forecast_start_timestamp,
+        "forecast_interval_offset": forecast_interval_offset,
+        "forecast_timestamp": forecast_timestamp,
+        "forecast_startdate": forecast_startdate,
+        "run_time_hour": forecast_starthour,
+        "forecast_hour": forecast_hour,
     }
 
     return components
@@ -354,7 +450,7 @@ def full_refresh(
 
     # cycle through variables and update each
     for var in variables:
-        download_urls = create_urls(
+        download_urls = create_urls_rotated_lat_lon(
             latest_url["baseurl"],
             model_run=latest_url["forecast"],
             date=latest_url["date"],
@@ -362,7 +458,7 @@ def full_refresh(
         )
         assert len(download_urls) > 0
 
-        forecast_info = file_name_info(download_urls[0])
+        forecast_info = file_name_info(download_urls[0], "rotated_lat_lon")
         # print("forecast_info:", forecast_info)
         s3_prefix = f"""gribs/{forecast_info["forecast_base_string"]}"""
 
@@ -409,10 +505,14 @@ def full_refresh(
         print(vrt)
         assert isinstance(vrt, str)
 
-        insert_variables = insert_variables_record(forecast_info, conn_details)
+        insert_variables = insert_variables_record_rotated_lat_lon(
+            forecast_info, conn_details
+        )
         print(insert_variables)
 
-        psql = load_to_postgis(vrt, "public", "predictions", conn_details)
+        psql = load_to_postgis(
+            vrt, "public", "predictions", conn_details, srid="990001"
+        )
         assert isinstance(psql, str)
         print(psql)
         results.append(psql)
@@ -434,7 +534,7 @@ def delete_objects_from_bucket(
     return response
 
 
-def insert_variables_record(
+def insert_variables_record_polar_stereo(
     file_name_info: dict[str, str], conn_details: dict[str, str]
 ) -> dict[str, Any]:
     columns = [
@@ -444,7 +544,6 @@ def insert_variables_record(
         "forecast_start_timestamp",
         "source",
         "model",
-        "domain",
         "variable",
         "leveltype",
         "level",
@@ -460,7 +559,6 @@ def insert_variables_record(
         {val_forecast_start_timestamp},
         {val_source},
         {val_model},
-        {val_domain},
         {val_variable},
         {val_leveltype},
         {val_level},
@@ -473,7 +571,6 @@ def insert_variables_record(
             {val_forecast_start_timestamp},
             {val_source},
             {val_model},
-            {val_domain},
             {val_variable},
             {val_leveltype},
             {val_level},
@@ -490,8 +587,80 @@ def insert_variables_record(
             file_name_info["forecast_start_timestamp"]
         ),
         val_source=sql.Literal(file_name_info["source"]),
-        val_domain=sql.Literal(file_name_info["domain"]),
-        val_model=sql.Literal(file_name_info["domain"]),
+        val_model=sql.Literal(file_name_info["model"]),
+        val_variable=sql.Literal(file_name_info["variable"]),
+        val_leveltype=sql.Literal(file_name_info["leveltype"]),
+        val_level=sql.Literal(file_name_info["level"]),
+        val_resolution=sql.Literal(file_name_info["resolution"]),
+        conflict_columns=sql.SQL(", ").join(
+            sql.Identifier(col) for col in on_conflict_columns
+        ),
+    )
+
+    with psycopg.connect(**conn_details, autocommit=True) as conn:
+        with conn.cursor() as curr:
+            res = curr.execute(sql_statement)
+
+    return {
+        "statusmessage": res.statusmessage,
+        "rowcount": res.rowcount,
+    }
+
+
+def insert_variables_record_rotated_lat_lon(
+    file_name_info: dict[str, str], conn_details: dict[str, str]
+) -> dict[str, Any]:
+    columns = [
+        "filename",
+        "forecast_base_string",
+        "forecast_string",
+        "forecast_start_timestamp",
+        "source",
+        "model",
+        "variable",
+        "leveltype",
+        "level",
+        "resolution",
+    ]
+    on_conflict_columns = columns[1:]
+
+    sql_statement = sql.SQL(
+        """INSERT INTO {table} ({columns}) VALUES (
+        {val_filename},
+        {val_forecast_base_string},
+        {val_forecast_string},
+        {val_forecast_start_timestamp},
+        {val_source},
+        {val_model},
+        {val_variable},
+        {val_leveltype},
+        {val_level},
+        {val_resolution}
+        )
+        ON CONFLICT ("filename") DO UPDATE
+        SET ({conflict_columns}) = (
+            {val_forecast_base_string},
+            {val_forecast_string},
+            {val_forecast_start_timestamp},
+            {val_source},
+            {val_model},
+            {val_variable},
+            {val_leveltype},
+            {val_level},
+            {val_resolution})
+        WHERE "variables"."filename" = {val_filename}
+        """
+    ).format(
+        table=sql.Identifier("public", "variables"),
+        columns=sql.SQL(", ").join(sql.Identifier(col) for col in columns),
+        val_filename=sql.Literal(file_name_info["forecast_string"] + ".vrt"),
+        val_forecast_base_string=sql.Literal(file_name_info["forecast_base_string"]),
+        val_forecast_string=sql.Literal(file_name_info["forecast_string"]),
+        val_forecast_start_timestamp=sql.Literal(
+            file_name_info["forecast_start_timestamp"]
+        ),
+        val_source=sql.Literal(file_name_info["source"]),
+        val_model=sql.Literal(file_name_info["model"]),
         val_variable=sql.Literal(file_name_info["variable"]),
         val_leveltype=sql.Literal(file_name_info["leveltype"]),
         val_level=sql.Literal(file_name_info["level"]),

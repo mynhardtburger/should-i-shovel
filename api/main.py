@@ -110,7 +110,7 @@ def return_latest_forecast(
 @app.get("/data_mangement/refresh_weather_data")
 def refresh_weather_data():
     """Redownloads the latest available weather forecasts."""
-    variables = [
+    variables_hrdps_polar = [
         {"variable": "SNOD", "level_type": "SFC", "level": "0"},  # Snow Depth in meters
         # {
         #     "variable": "APCP",
@@ -139,13 +139,19 @@ def refresh_weather_data():
         #     "level": "2",
         # },  # Relative humidity 2m above ground in percent
     ]
+    variables_hrdps_rotated_lat_lon = [
+        {"variable": "TMP", "level_type": "Sfc", "level": ""},
+        {"variable": "CONDASNOW", "level_type": "Sfc", "level": ""},
+        {"variable": "CSNOW", "level_type": "Sfc", "level": ""},
+        {"variable": "HSNOWL", "level_type": "Sfc", "level": ""},
+    ]
 
     db_conn_status = test_db_connection()
     if db_conn_status.returncode != 0:
         return db_conn_status
 
     results = full_refresh(
-        variables,
+        variables_hrdps_rotated_lat_lon,
         aws_bucket=aws_bucket,
         conn_details=pg_connection_dict,
         last_forecast_hour=48,
@@ -199,9 +205,14 @@ def delete_objects_with_prefix(prefix: str) -> dict[str, Any]:
 
 
 @app.get("/data_management/filename_components")
-def get_filename_components(fullpath: str) -> dict[str, str]:
-    """Segments the fullpath into its components."""
-    return file_name_info(fullpath)
+def get_filename_components(fullpath: str, format: str) -> dict[str, str]:
+    """Segments the fullpath into its components.
+
+    available formats:
+        "polar_stereo"\n
+        "rotated_lat_lon"
+    """
+    return file_name_info(fullpath, format)
 
 
 @app.get("/data_management/delete_variable")
