@@ -1,6 +1,9 @@
 import Chart from 'chart.js/auto';
 import 'chartjs-adapter-moment';
 import _ from 'lodash';
+import annotationPlugin from 'chartjs-plugin-annotation';
+
+Chart.register(annotationPlugin);
 
 let charts = {};
 
@@ -15,23 +18,32 @@ export function getForecast(lat, lng) {
     .then((data) => {
       console.log(data);
 
+      const variables_enabled = {
+        TMP: 'rgb(255, 99, 132)',
+        CONDASNOW: 'rgb(54, 162, 235)',
+      };
       let chartContainer = document.getElementById('charts_area');
+      let chartData = {
+        labels: Object.values(data[0]['forecast_timestamp']),
+        datasets: [],
+      };
+      const canvasId = 'chart';
 
       for (let forecastVar of data) {
-        let canvasId = 'chart_' + forecastVar['variable'][0];
-        const chartData = {
-          labels: Object.values(forecastVar['forecast_timestamp']),
-          datasets: [
-            {
-              label: forecastVar['variable'][0],
-              data: Object.values(forecastVar['value']),
-              borderColor: 'rgb(255, 99, 132)',
-              fill: false,
-              cubicInterpolationMode: 'monotone',
-              tension: 0.4,
-            },
-          ],
-        };
+        if (!variables_enabled.hasOwnProperty(forecastVar['variable'][0])) {
+          continue;
+        }
+
+        // let canvasId = 'chart_' + forecastVar['variable'][0];
+        chartData['datasets'].push({
+          label: forecastVar['variable_description'][0],
+          data: Object.values(forecastVar['value']),
+          borderColor: variables_enabled[forecastVar['variable'][0]],
+          fill: false,
+          cubicInterpolationMode: 'monotone',
+          tension: 0.4,
+          yAxisID: forecastVar['unit'][0],
+        });
 
         if (canvasId in charts) {
           charts[canvasId].data.labels = chartData.labels;
@@ -57,13 +69,25 @@ export function drawChart(chartdata, canvasElement) {
     data: chartdata,
     options: {
       responsive: true,
+      aspectRatio: 1,
       plugins: {
         title: {
           display: true,
-          text: '48 hour forecast',
+          text: '48 Hour forecast',
         },
         legend: {
-          display: false,
+          display: true,
+        },
+        annotation: {
+          annotations: {
+            line1: {
+              type: 'line',
+              yMin: 0,
+              yMax: 0,
+              borderColor: 'rgb(255, 99, 132)',
+              borderWidth: 2,
+            },
+          },
         },
       },
       interaction: {
@@ -78,20 +102,41 @@ export function drawChart(chartdata, canvasElement) {
           type: 'timeseries',
           time: {
             displayFormats: {
-              hour: 'DD MMM hh:mm A',
+              hour: 'h A, DD MMM ',
             },
             unit: 'hour',
             unitStepSize: 1,
           },
+          axis: 'x',
+          position: 'bottom',
         },
-        y: {
+        C: {
+          display: true,
+          title: {
+            display: true,
+            text: 'Celsius',
+          },
+          position: 'left',
+          type: 'linear',
+          axis: 'y',
+          min: -40,
+          max: 40,
+          grid: {
+            drawOnChartArea: false,
+            drawTicks: false,
+          },
+        },
+        m: {
           display: true,
           title: {
             display: true,
             text: 'Meters',
           },
-          suggestedMin: 0,
-          suggestedMax: 1,
+          position: 'right',
+          axis: 'y',
+          min: -1,
+          max: 1,
+          type: 'linear',
         },
       },
     },
