@@ -21,8 +21,8 @@ To answer this I'm building a small web app. My focus is not on the forecasting 
     - [ ] Text verbage of should I shovel? No, likely & when
     - [ ] Highlight timeband during which shoveling is likely necessary "shovel time"
     - [ ] Create API endpoint to provide list of time indices where shoveling is likely -> shovel time.
-    - [ ] Graph labels/colors/legends are correct
-    - [ ] Graphs updates with data
+    - [x] Graph labels/colors/legends are correct
+    - [x] Graphs updates with data
 - [x] Implement map in front end
 - [x] Finalize API queries to PostGIS to retrieve data
 - [x] Complete data refresh logic
@@ -30,6 +30,14 @@ To answer this I'm building a small web app. My focus is not on the forecasting 
     - [x] Load raster data to PostGIS
     - [x] Retrieve latest grib2 files
     - [x] Determine latest forecast
+
+### 2023-01-19
+* Back end:
+    * Finalized variable selection
+    * Updated import procedures and API to be compatible with the slighly different source.
+
+* Front end:
+    * Graph lables, colors, scales, legends corrected.
 
 ### 2023-01-18
 * Front end:
