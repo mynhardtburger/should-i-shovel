@@ -1,4 +1,4 @@
-import { getForecast } from './shouldishovel';
+import { drawChart, getForecast } from './shouldishovel';
 import './style.css';
 
 function printMe() {
@@ -21,7 +21,7 @@ function component() {
 
 // document.body.appendChild(component());
 
-let map, infoWindow;
+let map, infoWindow, mychart;
 let markers = [];
 
 function initMap() {
@@ -66,7 +66,11 @@ function initMap() {
     addMarker(mapsMouseEvent.latLng);
     map.panTo(mapsMouseEvent.latLng);
     console.log(mapsMouseEvent.latLng.toString());
-    getForecast(mapsMouseEvent.latLng.lat(), mapsMouseEvent.latLng.lng());
+    getForecast(
+      mapsMouseEvent.latLng.lat(),
+      mapsMouseEvent.latLng.lng(),
+      mychart
+    );
   });
 }
 
@@ -105,6 +109,7 @@ function handleLocationError(browserHasGeolocation, infoWindow, pos) {
 }
 
 window.initMap = initMap;
+mychart = drawChart();
 
 // const button = document.getElementById('getData');
 // const button_address = document.getElementById('getData_address');

@@ -56,11 +56,20 @@ def get_forecast(
     longitude: float,
 ):
     """Returns the forecast for a set of coordiantes"""
-    return predictions.get_nearest_predictions_as_df(
+    dfs = predictions.get_predictions_as_dict(
         conn_details=pg_connection_dict,
         latitude=latitude,
         longitude=longitude,
     )
+
+    df = predictions.format_predictions(dfs)
+    results = predictions.df_details(dfs[0])
+    del results["unit"]
+    del results["variable"]
+    del results["variable_description"]
+    results.update({"data": df.to_dict("list")})
+
+    return results
 
 
 @app.get("/forecast/address")
@@ -70,11 +79,7 @@ def get_forecast_from_address(address: str):
     if (not latitude) or (not longitude):
         return f"Coordinates not found for address. Try being more specific."
 
-    return predictions.get_nearest_predictions_as_df(
-        conn_details=pg_connection_dict,
-        latitude=latitude,
-        longitude=longitude,
-    )
+    return get_forecast(latitude, longitude)
 
 
 @app.get("/address/")
@@ -96,7 +101,7 @@ def get_address_coordinates(address: str) -> tuple[float, float]:
 @app.get("/data_mangement/find_latest_forecast")
 def return_latest_forecast(
     forecast_hour: int,
-    url_path: str = "WXO-DD/model_hrdps/continental/grib2",
+    url_path: str = "WXO-DD/model_hrdps/continental/2.5km/grib2",
     domain: str = "https://hpfx.collab.science.gc.ca",
 ) -> dict[str, str]:
     """Queries the canadian weather service to determine what is the most recent forecast set available based on the folders which exists."""
@@ -140,10 +145,13 @@ def refresh_weather_data():
         # },  # Relative humidity 2m above ground in percent
     ]
     variables_hrdps_rotated_lat_lon = [
-        {"variable": "TMP", "level_type": "Sfc", "level": ""},
-        {"variable": "CONDASNOW", "level_type": "Sfc", "level": ""},
-        {"variable": "CSNOW", "level_type": "Sfc", "level": ""},
-        {"variable": "HSNOWL", "level_type": "Sfc", "level": ""},
+        {"variable": "TMP", "level_type": "Sfc", "level": ""},  # Temperature
+        {
+            "variable": "CONDASNOW",
+            "level_type": "Sfc",
+            "level": "",
+        },  # Conditional amount of snow
+        # {"variable": "CSNOW", "level_type": "Sfc", "level": ""}, # Probability of snow
     ]
 
     db_conn_status = test_db_connection()

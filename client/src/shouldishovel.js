@@ -5,12 +5,19 @@ import annotationPlugin from 'chartjs-plugin-annotation';
 
 Chart.register(annotationPlugin);
 
-let charts = {};
+export const CHART_COLORS = {
+  red: 'rgb(255, 99, 132)',
+  orange: 'rgb(255, 159, 64)',
+  yellow: 'rgb(255, 205, 86)',
+  green: 'rgb(75, 192, 192)',
+  blue: 'rgb(54, 162, 235)',
+  purple: 'rgb(153, 102, 255)',
+  grey: 'rgb(201, 203, 207)',
+};
 
-export function getForecast(lat, lng) {
-  // lat = document.getElementById('f_lat').value;
-  // lon = document.getElementById('f_lon').value;
+const axisMax = 400;
 
+export function getForecast(lat, lng, chart) {
   fetch(
     `http://127.0.0.1:8000/forecast/coordinates?latitude=${lat}&longitude=${lng}`
   )
@@ -19,57 +26,70 @@ export function getForecast(lat, lng) {
       console.log(data);
 
       const variables_enabled = {
-        TMP: 'rgb(255, 99, 132)',
-        CONDASNOW: 'rgb(54, 162, 235)',
+        C: { color: CHART_COLORS.red, label: 'Temperature', axis: 'C' },
+        mm: {
+          color: CHART_COLORS.blue,
+          label: 'Snow Fall per Hour',
+          axis: 'mm',
+        },
+        estimated_snow_height: {
+          color: CHART_COLORS.purple,
+          label: 'Cumulative Snow Depth',
+          axis: 'mm',
+        },
       };
-      let chartContainer = document.getElementById('charts_area');
+
       let chartData = {
-        labels: Object.values(data[0]['forecast_timestamp']),
+        labels: Object.values(data['data']['forecast_timestamp']),
         datasets: [],
       };
-      const canvasId = 'chart';
 
-      for (let forecastVar of data) {
-        if (!variables_enabled.hasOwnProperty(forecastVar['variable'][0])) {
-          continue;
-        }
-
-        // let canvasId = 'chart_' + forecastVar['variable'][0];
+      for (const variable of Object.keys(variables_enabled)) {
         chartData['datasets'].push({
-          label: forecastVar['variable_description'][0],
-          data: Object.values(forecastVar['value']),
-          borderColor: variables_enabled[forecastVar['variable'][0]],
+          type: 'line',
+          label: variables_enabled[variable].label,
+          data: Object.values(data['data'][variable]),
+          borderColor: variables_enabled[variable].color,
           fill: false,
           cubicInterpolationMode: 'monotone',
           tension: 0.4,
-          yAxisID: forecastVar['unit'][0],
+          yAxisID: variables_enabled[variable].axis,
         });
-
-        if (canvasId in charts) {
-          charts[canvasId].data.labels = chartData.labels;
-          charts[canvasId].data.datasets = chartData.datasets;
-          charts[canvasId].update();
-        } else {
-          let newCanvas = document.createElement('canvas');
-          newCanvas.setAttribute('id', canvasId);
-          chartContainer.appendChild(newCanvas);
-          charts[canvasId] = drawChart(
-            chartData,
-            document.getElementById(canvasId)
-          );
-        }
       }
+      chartData['datasets'].push({
+        type: 'bar',
+        label: 'Shoveltime',
+        data: Object.values(data['data']['shovel_time']).map((x) =>
+          x ? 1 : undefined
+        ),
+        borderColor: 'rgba(255, 159, 64, 0.0)',
+        backgroundColor: 'rgba(255, 159, 64, 0.5)',
+        yAxisID: 'shoveltime',
+      });
+
+      chart.data['labels'] = chartData.labels;
+      chart.data['datasets'] = chartData.datasets;
+      chart.update();
     })
     .catch(console.error);
 }
 
-export function drawChart(chartdata, canvasElement) {
-  return new Chart(canvasElement, {
+export function drawChart() {
+  return new Chart(document.getElementById('canvas'), {
     type: 'line',
-    data: chartdata,
+    data: {
+      labels: [],
+      datasets: [],
+    },
     options: {
       responsive: true,
       aspectRatio: 1,
+      datasets: {
+        bar: {
+          barPercentage: 1,
+          categoryPercentage: 0.9999,
+        },
+      },
       plugins: {
         title: {
           display: true,
@@ -124,19 +144,32 @@ export function drawChart(chartdata, canvasElement) {
           grid: {
             drawOnChartArea: false,
             drawTicks: false,
+            display: false,
           },
         },
-        m: {
+        mm: {
           display: true,
           title: {
             display: true,
-            text: 'Meters',
+            text: 'Millimeter',
           },
           position: 'right',
           axis: 'y',
-          min: -1,
-          max: 1,
+          min: -axisMax,
+          max: axisMax,
           type: 'linear',
+        },
+        shoveltime: {
+          min: 0,
+          max: 1,
+          axis: 'y',
+          title: {
+            display: false,
+          },
+          grid: {
+            display: false,
+          },
+          display: false,
         },
       },
     },
