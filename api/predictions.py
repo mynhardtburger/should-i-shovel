@@ -165,14 +165,14 @@ def format_predictions(df_list: list[pd.DataFrame]) -> pd.DataFrame:
     combined_df = combined_df.assign(
         snow_latent_heat_balance=energy_balance(combined_df)
     )
-    combined_df["estimated_snow_height"] = (
+    combined_df["estimated_snow_depth"] = (
         combined_df["snow_latent_heat_balance"]
         / LATENT_HEAT_OF_FUSION
         / SNOW_DENSITY
         / 1000
     )
     combined_df["shovel_time"] = (
-        combined_df["estimated_snow_height"] >= SHOVEL_DEPTH_THRESHOLD
+        combined_df["estimated_snow_depth"] >= SHOVEL_DEPTH_THRESHOLD
     )
 
     return combined_df.reset_index()
