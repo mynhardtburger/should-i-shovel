@@ -15,7 +15,7 @@ export const CHART_COLORS = {
   grey: 'rgb(201, 203, 207)',
 };
 
-const axisMax = 400;
+const axisMax = 300;
 
 export function getForecast(lat, lng, chart) {
   fetch(
@@ -32,9 +32,9 @@ export function getForecast(lat, lng, chart) {
           label: 'Snow Fall per Hour',
           axis: 'mm',
         },
-        estimated_snow_height: {
+        estimated_snow_depth: {
           color: CHART_COLORS.purple,
-          label: 'Cumulative Snow Depth',
+          label: 'Accumulated Snow Depth',
           axis: 'mm',
         },
       };
@@ -58,7 +58,7 @@ export function getForecast(lat, lng, chart) {
       }
       chartData['datasets'].push({
         type: 'bar',
-        label: 'Shoveltime',
+        label: 'Shovel Time',
         data: Object.values(data['data']['shovel_time']).map((x) =>
           x ? 1 : undefined
         ),
@@ -70,6 +70,10 @@ export function getForecast(lat, lng, chart) {
       chart.data['labels'] = chartData.labels;
       chart.data['datasets'] = chartData.datasets;
       chart.update();
+
+      let shovelCommentary = document.getElementById('shovel_commentary');
+      console.log(generateShovelCommentary(data));
+      shovelCommentary.textContent = generateShovelCommentary(data);
     })
     .catch(console.error);
 }
@@ -83,7 +87,8 @@ export function drawChart() {
     },
     options: {
       responsive: true,
-      aspectRatio: 1,
+      maintainAspectRatio: false,
+      aspectRatio: 3,
       datasets: {
         bar: {
           barPercentage: 1,
@@ -92,8 +97,8 @@ export function drawChart() {
       },
       plugins: {
         title: {
-          display: true,
-          text: '48 Hour forecast',
+          display: false,
+          // text: '48 Hour forecast',
         },
         legend: {
           display: true,
@@ -121,14 +126,19 @@ export function drawChart() {
           },
           type: 'timeseries',
           time: {
+            minUnit: 'hour',
             displayFormats: {
-              hour: 'h A, DD MMM ',
+              hour: 'ddd HH:mm',
+              day: 'DD MMM',
             },
-            unit: 'hour',
+            // unit: 'hour',
             unitStepSize: 1,
           },
           axis: 'x',
           position: 'bottom',
+          ticks: {
+            major: true,
+          },
         },
         C: {
           display: true,
@@ -139,8 +149,8 @@ export function drawChart() {
           position: 'left',
           type: 'linear',
           axis: 'y',
-          min: -40,
-          max: 40,
+          min: -30,
+          max: 30,
           grid: {
             drawOnChartArea: false,
             drawTicks: false,
@@ -190,4 +200,36 @@ export function get_forecast_for_address() {
       }
     })
     .catch(console.error);
+}
+
+export function generateShovelCommentary(forecastResponse) {
+  const shovelTimeHours = Object.values(forecastResponse.data.shovel_time);
+  const snowDepth = Object.values(forecastResponse.data.estimated_snow_depth);
+  const dayOne = shovelTimeHours.slice(0, 24);
+  const dayTwo = shovelTimeHours.slice(24, 48);
+  const responseText = {
+    unknown: "I don't know",
+    ifYouWantTo: 'If you want to 🫠',
+    maybeTomorrow: 'Maybe tomorrow 😕',
+    likely: 'Most likely yes 🥺',
+    absolutely: 'YES! 😱',
+    no: 'Nope 😄',
+  };
+
+  if (_.every(shovelTimeHours, (x) => x == false)) {
+    return responseText.no;
+  }
+  if (_.some(dayOne, (x) => x == true) && _.every(dayTwo, (x) => x == false)) {
+    return responseText.ifYouWantTo;
+  }
+  if (_.every(dayOne, (x) => x == false) && _.some(dayTwo, (x) => x == true)) {
+    return responseText.maybeTomorrow;
+  }
+  if (_.some(dayOne, (x) => x == true) && _.every(dayTwo, (x) => x == true)) {
+    if (snowDepth[snowDepth.length - 1] >= 25) {
+      return responseText.absolutely;
+    }
+    return responseText.likely;
+  }
+  return responseText.unknown;
 }

@@ -5,22 +5,6 @@ function printMe() {
   console.log('I get called from print.js!');
 }
 
-function component() {
-  const element = document.createElement('div');
-  const btn = document.createElement('button');
-
-  element.innerHTML = _.join(['Hello', 'webpack'], ' ');
-
-  btn.innerHTML = 'Click me and check the console!';
-  btn.onclick = printMe;
-
-  element.appendChild(btn);
-
-  return element;
-}
-
-// document.body.appendChild(component());
-
 let map, infoWindow, mychart;
 let markers = [];
 
@@ -30,14 +14,7 @@ function initMap() {
     zoom: 5,
   });
   infoWindow = new google.maps.InfoWindow();
-
-  const locationButton = document.createElement('button');
-
-  locationButton.textContent = 'Pan to Current Location';
-  locationButton.classList.add('custom-map-control-button');
-  map.controls[google.maps.ControlPosition.TOP_CENTER].push(locationButton);
-  locationButton.addEventListener('click', () => {
-    // Try HTML5 geolocation.
+  function panToGeoLocation() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -46,9 +23,10 @@ function initMap() {
             lng: position.coords.longitude,
           };
 
-          map.setCenter(pos);
+          map.panTo(pos);
+          map.setZoom(12);
           addMarker(pos);
-          getForecast(pos.lat, pos.lng);
+          getForecast(pos.lat, pos.lng, mychart);
         },
         () => {
           handleLocationError(true, infoWindow, map.getCenter());
@@ -58,10 +36,19 @@ function initMap() {
       // Browser doesn't support Geolocation
       handleLocationError(false, infoWindow, map.getCenter());
     }
+  }
+  panToGeoLocation();
+
+  const locationButton = document.createElement('button');
+  locationButton.textContent = 'Pan to Current Location';
+  locationButton.classList.add('custom-map-control-button');
+  map.controls[google.maps.ControlPosition.TOP_CENTER].push(locationButton);
+
+  locationButton.addEventListener('click', () => {
+    panToGeoLocation();
   });
 
   map.addListener('click', (mapsMouseEvent) => {
-    // map.setZoom(8);
     deleteMarkers();
     addMarker(mapsMouseEvent.latLng);
     map.panTo(mapsMouseEvent.latLng);
@@ -110,13 +97,3 @@ function handleLocationError(browserHasGeolocation, infoWindow, pos) {
 
 window.initMap = initMap;
 mychart = drawChart();
-
-// const button = document.getElementById('getData');
-// const button_address = document.getElementById('getData_address');
-// button.addEventListener('click', () =>
-//   get_forecast(
-//     document.getElementById('f_lat').value,
-//     document.getElementById('f_lng').value
-//   )
-// );
-// button_address.addEventListener('click', get_forecast_for_address);

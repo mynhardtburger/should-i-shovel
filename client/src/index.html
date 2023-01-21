@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <meta charset="utf-8">
     <title>Should I Shovel?</title>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
     <!-- <link href="./style.css" rel="stylesheet" /> -->
@@ -9,32 +10,29 @@
 </head>
 
 <body>
-    <!-- <div style="width: 500px;">
-        <label for="fname">Latitude:</label><br>
-        <input type="text" id="f_lat" name="f_lat" value="50.795127"><br>
-        <label for="lname">Longitude:</label><br>
-        <input type="text" id="f_lng" name="f_lng" value="-124.0456478"><br>
-        <button id='getData'>Get Data</button>
-    </div><br />
-    <div style="width: 500px;">
-        <label for="fname">address:</label><br>
-        <input type="text" id="address" name="address" value="33 eigth street etobicoke"><br>
-        <button id='getData_address'>Get forecast</button>
-    </div><br /> -->
+    <div id="header"><h1>Should I Shovel?</h1></div>
+    <div id="intro">
+        <p>Find out if you need to shovel snow in the next 48 hours by clicking your location on the map...</p>
+        <p>Review the <a href=https://github.com/mynhardtburger/should-i-shovel target="_blank">GitHub</a> project to see how it works.
+            You can contact me via <a href=https://www.linkedin.com/in/mynhardtb target="_blank">LinkedIn</a> - Mynhardt Burger.</p>
+    </div>
     <div class="container">
         <div id="map"></div>
 
-        <div id="charts_area">
+        <div id="chart">
+            <!-- <p id="answer_line">Should I Shovel? </p> -->
+            <p id="shovel_commentary"></p>
             <canvas id="canvas"></canvas>
+            <p id="attribution">Data Source: Environment and Climate Change Canada<br>
+                <a href="https://eccc-msc.github.io/open-data/msc-data/nwp_hrdps/readme_hrdps-datamart_en/">HRDPS</a> continental model refreshed every 6 hours.
+            </p>
         </div>
     </div>
 
-    <!-- <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM=" crossorigin=""></script> -->
     <script
       src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&callback=initMap&v=weekly"
       defer
     ></script>
-
     <script type=module src="./index.bundle.js"></script>
 </body>
 
