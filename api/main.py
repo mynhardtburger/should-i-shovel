@@ -5,20 +5,23 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import unquote
 
+import data_management
 import geocoder
 import predictions
-from data_management import (
-    delete_objects_from_bucket,
-    delete_variable_record,
-    does_prediction_data_exist,
-    file_name_info,
-    find_latest_forecast,
-    full_refresh,
-    get_s3_filelisting,
-    list_latest_variable_records,
-    list_orphan_bucket_objects,
-    list_variables_records,
-)
+
+# from data_management import (
+#     delete_objects_from_bucket,
+#     delete_variable_record,
+#     does_prediction_data_exist,
+#     file_name_info,
+#     find_latest_forecast,
+#     full_refresh,
+#     get_s3_filelisting,
+#     list_latest_variable_records,
+#     list_orphan_bucket_objects,
+#     list_variables_records,
+#     list_old_variable_records,
+# )
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -105,7 +108,7 @@ def return_latest_forecast(
     domain: str = "https://hpfx.collab.science.gc.ca",
 ) -> dict[str, str]:
     """Queries the canadian weather service to determine what is the most recent forecast set available based on the folders which exists."""
-    return find_latest_forecast(
+    return data_management.find_latest_forecast(
         forecast_hour=forecast_hour,
         url_path=url_path,
         domain=domain,
@@ -117,33 +120,13 @@ def refresh_weather_data():
     """Redownloads the latest available weather forecasts."""
     variables_hrdps_polar = [
         {"variable": "SNOD", "level_type": "SFC", "level": "0"},  # Snow Depth in meters
-        # {
-        #     "variable": "APCP",
-        #     "level_type": "SFC",
-        #     "level": "0",
-        # },  # Accumulated Precipitation in kg m-2
-        # {
-        #     "variable": "WEASN",
-        #     "level_type": "SFC",
-        #     "level": "0",
-        # },  # Accumulated Precipitation type - Snow in kg m-2
         {
             "variable": "TMP",
             "level_type": "TGL",
             "level": "2",
         },  # Temperature 2m above ground in kelvin
-        # {
-        #     "variable": "TCDC",
-        #     "level_type": "SFC",
-        #     "level": "0",
-        # },  # Total Cloud in percent
-        # {"variable": "ALBDO", "level_type": "SFC", "level": "0"},  # Albedo in percent
-        # {
-        #     "variable": "RH",
-        #     "level_type": "TGL",
-        #     "level": "2",
-        # },  # Relative humidity 2m above ground in percent
     ]
+
     variables_hrdps_rotated_lat_lon = [
         {"variable": "TMP", "level_type": "Sfc", "level": ""},  # Temperature
         {
@@ -158,19 +141,26 @@ def refresh_weather_data():
     if db_conn_status.returncode != 0:
         return db_conn_status
 
-    results = full_refresh(
+    results = data_management.full_refresh(
         variables_hrdps_rotated_lat_lon,
         aws_bucket=aws_bucket,
         conn_details=pg_connection_dict,
         last_forecast_hour=48,
     )
+
+    # delete old variables
+    delete_old_variables()
+
+    # delete orphaned files
+    list_orphan_objects()
+
     return results
 
 
 @app.get("/data_management/list_s3_contents")
 def list_s3_contents(prefix: str = "") -> list[dict[str, Any]]:
     """Returns list of the S3 bucket contents filtered for files starting with the prefix."""
-    return get_s3_filelisting(
+    return data_management.get_s3_filelisting(
         aws_bucket=aws_bucket,
         prefix=prefix,
     )
@@ -201,12 +191,12 @@ def delete_objects_with_prefix(prefix: str) -> dict[str, Any]:
     """Delete files matching the provided prefix from the AWS S3 bucket.
 
     DANGEROUS: Make sure your prefix is correct."""
-    files_to_delete = get_s3_filelisting(
+    files_to_delete = data_management.get_s3_filelisting(
         aws_bucket=aws_bucket,
         prefix=prefix,
     )
 
-    return delete_objects_from_bucket(
+    return data_management.delete_objects_from_bucket(
         aws_bucket=aws_bucket,
         file_list=files_to_delete,
     )
@@ -220,25 +210,38 @@ def get_filename_components(fullpath: str, format: str) -> dict[str, str]:
         "polar_stereo"\n
         "rotated_lat_lon"
     """
-    return file_name_info(fullpath, format)
+    return data_management.file_name_info(fullpath, format)
 
 
 @app.get("/data_management/delete_variable")
 def delete_variable(file_name: str):
     """Deletes the variable with the given filename."""
-    return delete_variable_record(file_name=file_name, conn_details=pg_connection_dict)
+    return data_management.delete_variable_record(
+        file_name=file_name, conn_details=pg_connection_dict
+    )
+
+
+@app.get("/data_management/delete_old_variables")
+def delete_old_variables():
+    """Deletes all old variables leaving only the latest version of each variable."""
+    results = []
+    for var in list_old_variables():
+        results.append(delete_variable(var["filename"]))
+    return results
 
 
 @app.get("/data_management/list_variables")
 def list_variables():
     """Returns the full variables table."""
-    return list_variables_records(conn_details=pg_connection_dict).to_dict("records")
+    return data_management.list_variables_records(
+        conn_details=pg_connection_dict
+    ).to_dict("records")
 
 
 @app.get("/data_management/list_orphaned_bucket_objects")
 def list_orphan_objects(filter_pattern: str = ""):
     """Finds all orphaned bucket objects and returns the orphans containing the filter_pattern."""
-    return list_orphan_bucket_objects(
+    return data_management.list_orphan_bucket_objects(
         filter_pattern=filter_pattern,
         aws_bucket=aws_bucket,
         conn_details=pg_connection_dict,
@@ -248,7 +251,7 @@ def list_orphan_objects(filter_pattern: str = ""):
 @app.get("/data_management/delete_orphaned_bucket_objects")
 def delete_orphan_objects(filter_pattern: str = ""):
     """Deletes all orphaned bucket objects."""
-    orphaned_objects = list_orphan_bucket_objects(
+    orphaned_objects = data_management.list_orphan_bucket_objects(
         filter_pattern=filter_pattern,
         aws_bucket=aws_bucket,
         conn_details=pg_connection_dict,
@@ -257,20 +260,30 @@ def delete_orphan_objects(filter_pattern: str = ""):
     if not orphaned_objects:
         return f"No orphaned objects found to be deleted."
 
-    return delete_objects_from_bucket(aws_bucket=aws_bucket, file_list=orphaned_objects)
+    return data_management.delete_objects_from_bucket(
+        aws_bucket=aws_bucket, file_list=orphaned_objects
+    )
 
 
 @app.get("/data_management/list_latest_variables")
 def list_latest_variables():
     """Return the most recent instance of each variable loaded."""
-    return list_latest_variable_records(conn_details=pg_connection_dict).to_dict(
-        "records"
-    )
+    return data_management.list_latest_variable_records(
+        conn_details=pg_connection_dict
+    ).to_dict("records")
+
+
+@app.get("/data_management/list_old_variables")
+def list_old_variables():
+    """Return the most recent instance of each variable loaded."""
+    return data_management.list_old_variable_records(
+        conn_details=pg_connection_dict
+    ).to_dict("records")
 
 
 @app.get("/data_management/prediction_data_exists")
 def prediction_data_exists(forecast_string: str):
     """Returns True if the prediction data already exists within the DB."""
-    return does_prediction_data_exist(
+    return data_management.does_prediction_data_exist(
         conn_details=pg_connection_dict, forecast_string=forecast_string
     )

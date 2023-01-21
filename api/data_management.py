@@ -327,7 +327,7 @@ def name_format_rotated_lat_lon_grid(full_path: str) -> dict[str, str]:
         "leveltype": lvltype,
         "level": lvl,
         "grille": "RLatLon",
-        "resolution": filename_parts[6].removeprefix("RLatLon"),
+        "resolution": filename_parts[5].removeprefix("RLatLon"),
         "forecast_start_timestamp": forecast_start_timestamp,
         "forecast_interval_offset": forecast_interval_offset,
         "forecast_timestamp": forecast_timestamp,
@@ -783,7 +783,29 @@ def list_latest_variable_records(conn_details: dict[str, str]) -> pd.DataFrame:
         from variables v
         inner join latest on
             v.forecast_base_string = latest.forecast_base_string
-            and v.forecast_start_timestamp=latest.forecast_start_timestamp
+            and v.forecast_start_timestamp = latest.forecast_start_timestamp
+    """
+    )
+    return execute_sql_as_dataframe(conn_details=conn_details, sql_query=sql_statement)
+
+
+def list_old_variable_records(conn_details: dict[str, str]) -> pd.DataFrame:
+    """Return out-dated instances of each variable loaded."""
+    sql_statement = sql.SQL(
+        """
+        with latest as (
+            select
+                forecast_base_string ,
+                max(forecast_start_timestamp) as forecast_start_timestamp
+            from variables v
+            group by forecast_base_string
+        )
+        select
+            *
+        from variables v
+        inner join latest on
+            v.forecast_base_string = latest.forecast_base_string
+            and v.forecast_start_timestamp != latest.forecast_start_timestamp
     """
     )
     return execute_sql_as_dataframe(conn_details=conn_details, sql_query=sql_statement)
