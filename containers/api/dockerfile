@@ -18,7 +18,9 @@ RUN apt-get update && \
 WORKDIR /code
 COPY api/requirements.txt /tmp/requirements.txt
 COPY containers/api/.pgpass /root/.pgpass
-RUN chmod 600 /root/.pgpass
 
+RUN chmod 600 /root/.pgpass
 RUN pip install --no-cache-dir --upgrade -r /tmp/requirements.txt
+RUN (crontab -l 2>/dev/null; echo "0 * * * * echo curl -X 'GET' 'http://127.0.0.1/data_mangement/refresh_weather_data' -H 'accept: application/json'") | crontab -
+
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--reload"]

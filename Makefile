@@ -37,3 +37,7 @@ api-rebuild:
 ## website
 update-website:
 	aws s3 cp "static website/" "s3://shouldishovel.com/" --recursive
+
+## front end
+bundle:
+	cd client; npx webpack
