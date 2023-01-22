@@ -1,10 +1,6 @@
 import { drawChart, getForecast } from './shouldishovel';
 import './style.css';
 
-function printMe() {
-  console.log('I get called from print.js!');
-}
-
 let map, infoWindow, mychart;
 let markers = [];
 
