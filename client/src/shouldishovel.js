@@ -18,9 +18,7 @@ export const CHART_COLORS = {
 const axisMax = 200;
 
 export function getForecast(lat, lng, chart) {
-  fetch(
-    `http://127.0.0.1:8000/forecast/coordinates?latitude=${lat}&longitude=${lng}`
-  )
+  fetch(`forecast/coordinates?latitude=${lat}&longitude=${lng}`)
     .then((response) => response.json())
     .then((data) => {
       console.log(data);
