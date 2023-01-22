@@ -59,11 +59,15 @@ def get_forecast(
     longitude: float,
 ):
     """Returns the forecast for a set of coordiantes"""
-    dfs = predictions.get_predictions_as_dict(
+    dfs = predictions.get_predictions_as_dfs(
         conn_details=pg_connection_dict,
         latitude=latitude,
         longitude=longitude,
     )
+
+    # no results
+    if len(dfs[0]) == 0:
+        return "no results"
 
     df = predictions.format_predictions(dfs)
     results = predictions.df_details(dfs[0])
