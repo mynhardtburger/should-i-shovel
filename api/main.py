@@ -37,7 +37,7 @@ aws_bucket = os.environ["AWS_BUCKET"]
 
 app = FastAPI()
 
-origins = ["http://localhost:8080"]
+origins = ["http://shouldishovel.com"]
 
 app.add_middleware(
     CORSMiddleware,
