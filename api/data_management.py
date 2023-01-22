@@ -779,7 +779,7 @@ def list_latest_variable_records(conn_details: dict[str, str]) -> pd.DataFrame:
             group by forecast_base_string
         )
         select
-            *
+            v.*
         from variables v
         inner join latest on
             v.forecast_base_string = latest.forecast_base_string
