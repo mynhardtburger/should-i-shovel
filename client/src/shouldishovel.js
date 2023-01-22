@@ -15,7 +15,7 @@ export const CHART_COLORS = {
   grey: 'rgb(201, 203, 207)',
 };
 
-const axisMax = 300;
+const axisMax = 200;
 
 export function getForecast(lat, lng, chart) {
   fetch(
@@ -24,6 +24,13 @@ export function getForecast(lat, lng, chart) {
     .then((response) => response.json())
     .then((data) => {
       console.log(data);
+      let shovelCommentary = document.getElementById('shovel_commentary');
+
+      if (typeof data != 'object') {
+        shovelCommentary.textContent =
+          'No data. Try a different spot in Canada or northern USA.';
+        return;
+      }
 
       const variables_enabled = {
         C: { color: CHART_COLORS.red, label: 'Temperature', axis: 'C' },
@@ -71,7 +78,6 @@ export function getForecast(lat, lng, chart) {
       chart.data['datasets'] = chartData.datasets;
       chart.update();
 
-      let shovelCommentary = document.getElementById('shovel_commentary');
       console.log(generateShovelCommentary(data));
       shovelCommentary.textContent = generateShovelCommentary(data);
     })
@@ -149,8 +155,8 @@ export function drawChart() {
           position: 'left',
           type: 'linear',
           axis: 'y',
-          min: -30,
-          max: 30,
+          min: -20,
+          max: 20,
           grid: {
             drawOnChartArea: false,
             drawTicks: false,
@@ -208,8 +214,8 @@ export function generateShovelCommentary(forecastResponse) {
   const dayOne = shovelTimeHours.slice(0, 24);
   const dayTwo = shovelTimeHours.slice(24, 48);
   const responseText = {
-    unknown: "I don't know",
-    ifYouWantTo: 'If you want to 🫠',
+    unknown: "I don't know 🤯",
+    ifYouWantTo: 'If you want to, but it will likely melt 🫠',
     maybeTomorrow: 'Maybe tomorrow 😕',
     likely: 'Most likely yes 🥺',
     absolutely: 'YES! 😱',
@@ -220,6 +226,9 @@ export function generateShovelCommentary(forecastResponse) {
     return responseText.no;
   }
   if (_.some(dayOne, (x) => x == true) && _.every(dayTwo, (x) => x == false)) {
+    return responseText.ifYouWantTo;
+  }
+  if (_.some(dayOne, (x) => x == true) && _.some(dayTwo, (x) => x == false)) {
     return responseText.ifYouWantTo;
   }
   if (_.every(dayOne, (x) => x == false) && _.some(dayTwo, (x) => x == true)) {

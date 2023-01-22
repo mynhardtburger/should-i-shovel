@@ -24,7 +24,7 @@ function initMap() {
           };
 
           map.panTo(pos);
-          map.setZoom(12);
+          map.setZoom(10);
           addMarker(pos);
           getForecast(pos.lat, pos.lng, mychart);
         },
@@ -37,6 +37,7 @@ function initMap() {
       handleLocationError(false, infoWindow, map.getCenter());
     }
   }
+
   panToGeoLocation();
 
   const locationButton = document.createElement('button');

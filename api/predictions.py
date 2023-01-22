@@ -26,7 +26,7 @@ def execute_sql_as_dataframe(
             return pd.DataFrame()
 
 
-def get_predictions_as_dict(
+def get_predictions_as_dfs(
     conn_details: dict[str, str], latitude: float, longitude: float
 ) -> list[pd.DataFrame]:
     """Obtains the nearest prediction to the coordinates provided returing the data in a dataframe."""
