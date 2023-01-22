@@ -156,7 +156,7 @@ def refresh_weather_data():
     delete_old_variables()
 
     # delete orphaned files
-    list_orphan_objects()
+    delete_orphan_objects()
 
     return results
 
