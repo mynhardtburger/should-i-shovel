@@ -17,8 +17,8 @@ To answer this I'm building a small web app. My focus is not on the forecasting 
 ### Todo
 - [ ] Finalize terraform/docker structure so that updates can be pushed via git commits
 - [ ] Setup auto data refresh schedule
-- [ ] Implement graphs for all weather variables in front end
-    - [ ] Text verbage of should I shovel? No, likely & when
+- [x] Implement graphs for all weather variables in front end
+    - [x] Text verbage of should I shovel? No, likely & when
     - [x] Highlight timeband during which shoveling is likely necessary "shovel time"
     - [x] Added shoveltime flag to data set which API makes available
     - [x] Graph labels/colors/legends are correct
@@ -31,6 +31,15 @@ To answer this I'm building a small web app. My focus is not on the forecasting 
     - [x] Retrieve latest grib2 files
     - [x] Determine latest forecast
 
+### 2023-01-21
+* Back end & front end:
+    * handle case where no forecast is available.
+
+* Back end:
+    * clean up of old data incorporated into full refresh.
+
+* Front end:
+    * Made it look pretty and updated verbage.
 ### 2023-01-20
 * Back end:
     * Removed unnecessary variables from refresh code
