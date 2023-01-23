@@ -9,7 +9,8 @@ variable "key_name" {
 variable "instance_type" {
   description = "Instance type for EMR and EC2"
   type        = string
-  default     = "t3.micro"
+  #   default     = "t3.micro"
+  default = "t3a.medium"
 }
 
 ## Alert email receiver
@@ -55,4 +56,14 @@ variable "repo_url" {
   description = "Repository url to clone into production machine"
   type        = string
   default     = "https://github.com/mynhardtburger/should-i-shovel.git"
+}
+
+variable "public_subnet_cidr" {
+  type    = string
+  default = "178.0.10.0/24"
+}
+
+variable "vpc_cidr" {
+  type    = string
+  default = "178.0.0.0/16"
 }

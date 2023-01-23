@@ -14,7 +14,7 @@ up-dev:
 	docker compose -f docker-compose-localdev.yml up -d
 
 down:
-	docker compose down --volumes --remove-orphans
+	docker compose down --remove-orphans
 
 restart:
 	docker compose restart
@@ -41,3 +41,6 @@ update-website:
 ## front end
 bundle:
 	cd client; npx webpack
+
+refresh_weather_data:
+	docker exec -d backend sh -c "cd / && run-parts --report /etc/cron.hourly"

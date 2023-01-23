@@ -40,9 +40,10 @@ services:
       AWS_RDS_PORT: 5432
       AWS_RDS_DB: postgres
       AWS_RDS_USER: postgres
-      AWS_RDS_PASSWORD: ${AWS_RDS_PASSWORD}
-      AWS_BUCKET: ${AWS_BUCKET}
-      # AWS_BUCKET: "sto01.dev.us-east-2.aws.shouldishovel.com"
+      # AWS_RDS_PASSWORD: ${AWS_RDS_PASSWORD}
+      AWS_RDS_PASSWORD: mysecretpassword
+      # AWS_BUCKET: ${AWS_BUCKET}
+      AWS_BUCKET: "sto01.dev.us-east-2.aws.shouldishovel.com"
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
@@ -59,7 +60,8 @@ services:
     volumes:
       - postgis-db-volume:/var/lib/postgresql/data
     environment:
-      POSTGRES_PASSWORD: ${AWS_RDS_PASSWORD}
+      # POSTGRES_PASSWORD: ${AWS_RDS_PASSWORD}
+      POSTGRES_PASSWORD: mysecretpassword
       POSTGRES_USER: postgres
       POSTGRES_DB: postgres
 

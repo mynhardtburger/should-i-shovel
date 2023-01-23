@@ -1,16 +1,42 @@
-resource "random_password" "password" {
-  length           = 16
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
+# resource "random_password" "password" {
+#   length           = 16
+#   special          = true
+#   override_special = "!#$%&*()-_=+[]{}<>:?"
+# }
 
-data "aws_vpc" "default" {
-  default = true
-}
 
 # static IP
 resource "aws_eip" "ip" {
   instance = aws_instance.default.id
+  vpc      = true
+}
+
+resource "aws_vpc" "default" {
+  cidr_block = var.vpc_cidr
+}
+
+resource "aws_subnet" "public_subnet" {
+  vpc_id                  = aws_vpc.default.id
+  cidr_block              = var.public_subnet_cidr
+  map_public_ip_on_launch = true
+  availability_zone       = "${var.AWS_DEFAULT_REGION}a"
+}
+
+resource "aws_internet_gateway" "default" {
+  vpc_id = aws_vpc.default.id
+}
+
+resource "aws_route_table" "default" {
+  vpc_id = aws_vpc.default.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.default.id
+  }
+}
+
+resource "aws_route_table_association" "default" {
+  subnet_id      = aws_subnet.public_subnet.id
+  route_table_id = aws_route_table.default.id
 }
 
 # security groups
@@ -41,17 +67,31 @@ resource "aws_eip" "ip" {
 resource "aws_security_group" "security-group-us-east-2-d-ssh" {
   name        = "security-group-us-east-2-d-ssh"
   description = "Security group to allow inbound SSH connections"
+  vpc_id      = aws_vpc.default.id
 
   ingress {
-    description = "Inbound SCP"
+    description = "Inbound SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "security-group-us-east-2-d-http" {
+  name        = "security-group-us-east-2-d-http"
+  description = "Security group to allow inbound http connections"
+  vpc_id      = aws_vpc.default.id
+
   ingress {
-    description = "Inbound SCP"
+    description = "Inbound http"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -89,10 +129,12 @@ resource "aws_key_pair" "generated_key" {
 
 resource "aws_instance" "default" {
   ami           = data.aws_ami.ubuntu.id
-  instance_type = "t3.micro"
+  instance_type = var.instance_type
   key_name      = aws_key_pair.generated_key.key_name
+  subnet_id     = aws_subnet.public_subnet.id
   vpc_security_group_ids = [
-    aws_security_group.security-group-us-east-2-d-ssh.id
+    aws_security_group.security-group-us-east-2-d-ssh.id,
+    aws_security_group.security-group-us-east-2-d-http.id
   ]
   user_data = templatefile("aws_instance.default.tftpl", {
     AWS_RDS_PASSWORD      = var.AWS_RDS_PASSWORD,

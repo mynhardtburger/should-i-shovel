@@ -30,6 +30,7 @@ from fastapi.middleware.cors import CORSMiddleware
 pg_connection_dict = {
     "dbname": os.environ["AWS_RDS_DB"],
     "user": os.environ["AWS_RDS_USER"],
+    "password": os.environ["AWS_RDS_PASSWORD"],
     "port": os.environ["AWS_RDS_PORT"],
     "host": os.environ["AWS_RDS_HOST"],
 }
