@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Should I Shovel?</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+    <!-- <link href="./style.css" rel="stylesheet" /> -->
+    <!-- <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI=" crossorigin=""/> -->
+<script defer src="runtime.bundle.js"></script><script defer src="index.bundle.js"></script></head>
+
+<body>
+    <div id="header"><h1>Should I Shovel?</h1></div>
+    <div id="intro">
+        <p>Find out if you need to shovel snow in the next 48 hours by clicking your location on the map (<a href="https://collaboration.cmc.ec.gc.ca/cmc/cmos/public_doc/msc-data/nwp_hrdps/grille_hrdps_Rlatlon.png" target="_blank">most of Canada and norther USA</a>)...</p>
+        <p>Review the <a href=https://github.com/mynhardtburger/should-i-shovel target="_blank">GitHub</a> project to see how it works.
+            You can contact me via <a href=https://www.linkedin.com/in/mynhardtb target="_blank">LinkedIn</a> - Mynhardt Burger.</p>
+    </div>
+    <div class="container">
+        <div id="map"></div>
+
+        <div id="chart">
+            <!-- <p id="answer_line">Should I Shovel? </p> -->
+            <p id="shovel_commentary"></p>
+            <canvas id="canvas"></canvas>
+            <p id="attribution">Data Source: Environment and Climate Change Canada<br>
+                <a href="https://eccc-msc.github.io/open-data/msc-data/nwp_hrdps/readme_hrdps-datamart_en/">HRDPS</a> continental model refreshed every 6 hours.<br>
+                Don't rely on this for anything important. This is not meant to be a serious predication.
+            </p>
+        </div>
+    </div>
+
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDrAg1oz298Km2NqaYtSb1LmVwlFcVfiFw&callback=initMap&v=weekly"
+      defer
+    ></script>
+    <script type=module src="./index.bundle.js"></script>
+</body>
+
+</html>

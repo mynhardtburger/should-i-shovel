@@ -1,10 +1,3 @@
-# resource "random_password" "password" {
-#   length           = 16
-#   special          = true
-#   override_special = "!#$%&*()-_=+[]{}<>:?"
-# }
-
-
 # static IP
 resource "aws_eip" "ip" {
   instance = aws_instance.default.id
@@ -39,34 +32,9 @@ resource "aws_route_table_association" "default" {
   route_table_id = aws_route_table.default.id
 }
 
-# security groups
-# resource "aws_security_group" "security-group-us-east-2-d-postgres" {
-#   vpc_id      = data.aws_vpc.default.id
-#   name        = "security-group-us-east-2-d-postgres"
-#   description = "Allow all inbound for Postgres"
-#   ingress {
-#     from_port   = 5432
-#     to_port     = 5432
-#     protocol    = "tcp"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-#   egress {
-#     from_port   = 80
-#     to_port     = 80
-#     protocol    = "tcp"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-#   egress {
-#     from_port   = 443
-#     to_port     = 443
-#     protocol    = "tcp"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-# }
-
-resource "aws_security_group" "security-group-us-east-2-d-ssh" {
-  name        = "security-group-us-east-2-d-ssh"
-  description = "Security group to allow inbound SSH connections"
+resource "aws_security_group" "security-group-us-east-2-d-ssh_http" {
+  name        = "security-group-us-east-2-d-ssh_http"
+  description = "Security group to allow inbound SSH & HTTP connections"
   vpc_id      = aws_vpc.default.id
 
   ingress {
@@ -76,20 +44,6 @@ resource "aws_security_group" "security-group-us-east-2-d-ssh" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_security_group" "security-group-us-east-2-d-http" {
-  name        = "security-group-us-east-2-d-http"
-  description = "Security group to allow inbound http connections"
-  vpc_id      = aws_vpc.default.id
-
   ingress {
     description = "Inbound http"
     from_port   = 80
@@ -133,11 +87,10 @@ resource "aws_instance" "default" {
   key_name      = aws_key_pair.generated_key.key_name
   subnet_id     = aws_subnet.public_subnet.id
   vpc_security_group_ids = [
-    aws_security_group.security-group-us-east-2-d-ssh.id,
-    aws_security_group.security-group-us-east-2-d-http.id
+    aws_security_group.security-group-us-east-2-d-ssh_http.id
   ]
   user_data = templatefile("aws_instance.default.tftpl", {
-    AWS_RDS_PASSWORD      = var.AWS_RDS_PASSWORD,
+    AWS_RDS_PASSWORD      = "mysecretpassword",
     AWS_RDS_HOST          = "postgis",
     AWS_RDS_DB            = "postgres",
     AWS_RDS_USER          = "postgres",
@@ -151,21 +104,6 @@ resource "aws_instance" "default" {
   })
 }
 
-
-# resource "aws_db_instance" "default" {
-#   allocated_storage = 50
-#   db_name           = "mydb"
-#   engine            = "postgres"
-#   engine_version    = "13.7"
-#   instance_class    = "db.t3.micro"
-#   username          = "myn"
-#   password          = var.AWS_RDS_PASSWORD
-#   vpc_security_group_ids = [
-#     aws_security_group.security-group-us-east-2-d-postgres.id
-#   ]
-#   skip_final_snapshot = true
-#   publicly_accessible = true
-# }
 
 resource "aws_s3_bucket" "s3_gribs" {
   bucket = "sto01.dev.us-east-2.aws.shouldishovel.com"
@@ -182,57 +120,3 @@ resource "aws_s3_bucket_versioning" "s3_gribs" {
     status = "Disabled"
   }
 }
-
-# resource "aws_iam_role" "rds_role" {
-#   name = "rds_role"
-
-#   # Terraform's "jsonencode" function converts a
-#   # Terraform expression result to valid JSON syntax.
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Action = "sts:AssumeRole"
-#         Effect = "Allow"
-#         Sid    = ""
-#         Principal = {
-#           Service = "rds.amazonaws.com"
-#         }
-#       },
-#     ]
-#   })
-# }
-# resource "aws_iam_policy" "s3-access" {
-#   name        = "rds-s3-import-policy"
-#   path        = "/"
-#   description = "RDS to S3 import policy"
-
-#   policy = jsonencode({
-#     "Version" : "2012-10-17",
-#     "Statement" : [
-#       {
-#         "Sid" : "s3import",
-#         "Action" : [
-#           "s3:GetObject",
-#           "s3:ListBucket"
-#         ],
-#         "Effect" : "Allow",
-#         "Resource" : [
-#           "arn:aws:s3:::sto01.dev.us-east-2.aws.shouldishovel.com",
-#           "arn:aws:s3:::sto01.dev.us-east-2.aws.shouldishovel.com/*"
-#         ]
-#       }
-#     ]
-#   })
-# }
-
-# resource "aws_iam_role_policy_attachment" "rds-to-s3" {
-#   role       = aws_iam_role.rds_role.name
-#   policy_arn = aws_iam_policy.s3-access.arn
-# }
-
-# resource "aws_db_instance_role_association" "rds_s3import_role" {
-#   db_instance_identifier = aws_db_instance.default.id
-#   feature_name           = "s3Import"
-#   role_arn               = aws_iam_role.rds_role.arn
-# }
