@@ -230,6 +230,9 @@ export function generateShovelCommentary(forecastResponse) {
     return responseText.ifYouWantTo;
   }
   if (_.every(dayOne, (x) => x == false) && _.some(dayTwo, (x) => x == true)) {
+    if (snowDepth[snowDepth.length - 1] >= 25) {
+      return responseText.absolutely;
+    }
     return responseText.maybeTomorrow;
   }
   if (_.some(dayOne, (x) => x == true) && _.every(dayTwo, (x) => x == true)) {
