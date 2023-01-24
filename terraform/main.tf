@@ -52,7 +52,7 @@ resource "aws_security_group" "security-group-us-east-2-d-ssh_http" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
-    description = "Inbound http"
+    description = "Inbound https"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
