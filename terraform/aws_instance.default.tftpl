@@ -52,6 +52,10 @@ git clone ${REPO_URL}
 
 cd /should-i-shovel
 
+echo '---Setup SSL certificates---'
+chmod +x init-letsencrypt.sh
+. init-letsencrypt.sh
+
 echo '---Start containers---'
 make up
 

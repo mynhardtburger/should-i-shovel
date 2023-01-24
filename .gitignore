@@ -1,12 +1,12 @@
 # Data files #
 *.grib2
-data/*
+downloads/*
 
 # Local .terraform directories
 **/.terraform/*
 
 # Local ssl certificates
-**/certbot/*
+data/certbot
 
 # .tfstate files
 *.tfstate
