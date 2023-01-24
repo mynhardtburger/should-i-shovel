@@ -13,7 +13,7 @@ services:
     restart: always
     volumes:
       - ./client/dist:/usr/share/nginx/html:ro
-      - ./containers/webserver/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./containers/webserver/nginx.conf:/etc/nginx/nginx.conf:rw
       - ./certbot/www/:/var/www/certbot/:ro
       - ./certbot/conf/:/etc/nginx/ssl/:ro
     depends_on:
