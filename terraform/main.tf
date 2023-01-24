@@ -34,7 +34,7 @@ resource "aws_route_table_association" "default" {
 
 resource "aws_security_group" "security-group-us-east-2-d-ssh_http" {
   name        = "security-group-us-east-2-d-ssh_http"
-  description = "Security group to allow inbound SSH & HTTP/S connections"
+  description = "Security group to allow inbound SSH & HTTP connections"
   vpc_id      = aws_vpc.default.id
 
   ingress {
