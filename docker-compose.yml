@@ -4,6 +4,7 @@ services:
     image: nginx:1.23.3
     ports:
       - 80:80
+      - 433:433
     healthcheck:
       test: [ "CMD", "curl", "--fail", "http://localhost:80/" ]
       interval: 30s
