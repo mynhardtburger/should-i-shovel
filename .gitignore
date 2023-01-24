@@ -5,6 +5,9 @@ data/*
 # Local .terraform directories
 **/.terraform/*
 
+# Local ssl certificates
+**/certbot/*
+
 # .tfstate files
 *.tfstate
 *.tfstate.*
