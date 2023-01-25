@@ -44,6 +44,7 @@ services:
     restart: always
     volumes:
       - ./api:/code
+      - ./tmp/backend:/tmp
     tty: true
     depends_on:
       - postgis
