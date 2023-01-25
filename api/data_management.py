@@ -481,6 +481,7 @@ def full_refresh(
             aws_bucket=aws_bucket,
             prefix=s3_prefix,
         )
+        print(download_results)
         assert isinstance(download_results, str)
 
         after_folder_contents = get_s3_filelisting(
