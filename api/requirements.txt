@@ -1,4 +1,4 @@
-fastapi==0.88.0
+fastapi==0.109.1
 geocoder==1.38.1
 pandas==1.5.2
 psycopg==3.1.6
